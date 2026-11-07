@@ -48,6 +48,40 @@ function extractTopNGrams(docsTokens, totalDocs, topLimit = 14) {
     return candidates.slice(0, topLimit);
 }
 
+/**
+ * A longer phrase list for the phrase map. Overlapping phrases are merged: a two-word phrase is
+ * dropped when a three-word phrase containing it covers at least 80% of its threads (the longer
+ * one says more), and phrases that share a word and appear in exactly the same threads are
+ * merged into the highest-ranked of them.
+ */
+export function extractPhrasesForMap(docsTokens, totalDocs, limit = 60) {
+    const candidates = extractTopNGrams(docsTokens, totalDocs, limit * 3);
+    const sets = new Map(candidates.map(c => [c.phrase, new Set(c.issueNumbers)]));
+    const dropped = new Set();
+    for (const short of candidates) {
+        for (const long of candidates) {
+            if (long === short || long.phrase.split(' ').length <= short.phrase.split(' ').length) continue;
+            if (!` ${long.phrase} `.includes(` ${short.phrase} `)) continue;
+            const shortSet = sets.get(short.phrase);
+            let shared = 0;
+            for (const n of sets.get(long.phrase)) if (shortSet.has(n)) shared++;
+            if (shared >= 0.8 * shortSet.size) { dropped.add(short.phrase); break; }
+        }
+    }
+    // Phrases cut from the same sentence (they share words and appear in exactly the same threads)
+    // are one theme: keep the highest-ranked and drop the rest.
+    const kept = [];
+    for (const c of candidates) {
+        if (dropped.has(c.phrase)) continue;
+        const key = [...sets.get(c.phrase)].sort((x, y) => x - y).join(',');
+        const words = new Set(c.phrase.split(' '));
+        if (kept.some(k => k.key === key && k.phrase.split(' ').some(w => words.has(w)))) continue;
+        kept.push({ ...c, key });
+    }
+    return kept.slice(0, limit)
+        .map(({ phrase, count, issueNumbers }) => ({ phrase, count, issueNumbers }));
+}
+
 function clusterIssuesAndDuplicates(docsTokens) {
     const N = docsTokens.length;
     if (N < 4) {
@@ -242,7 +276,7 @@ function clusterIssuesAndDuplicates(docsTokens) {
 function handleNlpRequest(data) {
     const { id, issues } = data || {};
     if (!Array.isArray(issues) || issues.length === 0) {
-        return { id, clusters: [], ngrams: [], similarMap: {} };
+        return { id, clusters: [], ngrams: [], phrases: [], similarMap: {} };
     }
 
     const docsTokens = issues.map(iss => ({
@@ -251,9 +285,10 @@ function handleNlpRequest(data) {
     }));
 
     const ngrams = extractTopNGrams(docsTokens, issues.length, 14);
+    const phrases = extractPhrasesForMap(docsTokens, issues.length, 60);
     const { clusters, similarMap } = clusterIssuesAndDuplicates(docsTokens);
 
-    return { id, clusters, ngrams, similarMap };
+    return { id, clusters, ngrams, phrases, similarMap };
 }
 
 if (typeof self !== 'undefined') {

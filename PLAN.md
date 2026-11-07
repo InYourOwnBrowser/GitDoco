@@ -323,8 +323,10 @@ findings, and SPDX (tag-value or JSON) as a second SBOM format.
 - [ ] Possible later: a GitHub Action that regenerates the SVG on each push.
 - [x] Issues and Discussions map: threads linked by `#references` and similar wording, coloured by
       topic (same-named topics merged), deterministic force layout, select a thread or its group.
-- [ ] Next candidates: a phrase map (common phrases linked by the threads they share; needs more
-      than the current 14 phrases and merging of overlapping ones) and a topic timeline.
+- [x] Phrase map: up to 60 phrases from the NLP worker (overlapping ones merged), linked when they
+      share at least 2 threads and 15% of them; filter the list or select the threads.
+- [x] Topic timeline: new threads per week/month/quarter stacked by topic, tooltips, table view.
+- [x] Topic colours: a validated categorical palette (light and dark), clickable legends.
 
 ## Hosting and repository move
 

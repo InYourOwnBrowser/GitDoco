@@ -318,7 +318,7 @@
         <section class="pane active-mobile" id="issuesCard" role="tabpanel" aria-labelledby="tabIssuesBtn">
             <div class="pane-header">
                 <span class="pane-title">Issues</span>
-                <button type="button" id="mapBtn" class="secondary btn-xs" disabled title="A map of how the loaded issues link to each other: #references and similar wording, coloured by topic">Map</button>
+                <button type="button" id="mapBtn" class="secondary btn-xs" disabled title="Maps of the loaded issues: how they link to each other, the phrases they share, and a timeline of topics">Map</button>
                 <span id="selectedTokensBadge" class="badge" style="font-family: var(--font-mono); font-size: 0.78125rem; color: var(--ink-soft);">0 selected (~0 estimated body tokens)</span>
             </div>
 
@@ -502,9 +502,14 @@
 <dialog id="mapDialog" class="graph-dialog" aria-labelledby="mapDialogTitle">
     <div class="graph-dialog-head">
         <h2 id="mapDialogTitle">Issues map</h2>
+        <div class="graph-tabs" role="tablist" aria-label="View">
+            <button type="button" role="tab" id="mapTabLinks" aria-selected="true" aria-controls="mapMount" data-view="links">Links</button>
+            <button type="button" role="tab" id="mapTabPhrases" aria-selected="false" aria-controls="mapMount" data-view="phrases">Phrases</button>
+            <button type="button" role="tab" id="mapTabTimeline" aria-selected="false" aria-controls="mapMount" data-view="timeline">Timeline</button>
+        </div>
         <button type="button" id="mapCloseBtn" class="secondary btn-sm">Close</button>
     </div>
-    <div id="mapMount" class="graph-mount"></div>
+    <div id="mapMount" class="graph-mount" role="tabpanel"></div>
 </dialog>
 
 <script type="module" src="js/issues-app.js"></script>

@@ -13,8 +13,29 @@
  */
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-export const TOPIC_COLORS = ['#2A4BD7', '#1E7F57', '#B7791F', '#B93A2B', '#7C3AED', '#0E7490', '#BE185D', '#4D7C0F'];
-const NO_TOPIC = '#8A96A3';
+/** Topic colours are CSS variables --t0 ... --t7 (css/dep-graph.css: a validated palette, light and dark). */
+export const TOPIC_SLOTS = 8;
+
+/**
+ * Topics from the NLP worker's clusters. Topics with the same name (the clustering can split one
+ * theme in two) become one. Each thread belongs to its first topic.
+ * @returns {{ topics: {label, slot, count}[], topicOf: Map<number, number> }}
+ */
+export function mergeTopics(clusters) {
+    const index = new Map();
+    const topics = [];
+    const topicOf = new Map();
+    for (const c of clusters || []) {
+        const label = String(c.label || `Topic ${topics.length + 1}`);
+        if (!index.has(label)) { index.set(label, topics.length); topics.push({ label, slot: topics.length % TOPIC_SLOTS, count: 0 }); }
+        const t = index.get(label);
+        for (const n of c.issueNumbers || []) if (!topicOf.has(n)) { topicOf.set(n, t); topics[t].count++; }
+    }
+    return { topics, topicOf };
+}
+
+/** The CSS colour for a topic index (-1: no topic). */
+export const topicColor = (topics, t) => (t >= 0 && topics[t] ? `var(--t${topics[t].slot})` : 'var(--t-none)');
 
 // ------------------------------------------------------------------ data
 
@@ -29,16 +50,7 @@ const NO_TOPIC = '#8A96A3';
  */
 export function toIssueGraphData({ issues, clusters = [], similarMap = {}, extraTexts = null, extractRefs }) {
     const idOf = new Map();
-    // Topics with the same name (the clustering can split one theme in two) are shown as one.
-    const topicIndex = new Map();
-    const topics = [];
-    const topicOf = new Map();
-    for (const c of clusters || []) {
-        const label = String(c.label || `Topic ${topics.length + 1}`);
-        if (!topicIndex.has(label)) { topicIndex.set(label, topics.length); topics.push({ label, color: TOPIC_COLORS[topics.length % TOPIC_COLORS.length], count: 0 }); }
-        const t = topicIndex.get(label);
-        for (const n of c.issueNumbers || []) if (!topicOf.has(n)) { topicOf.set(n, t); topics[t].count++; }
-    }
+    const { topics, topicOf } = mergeTopics(clusters);
     const seenNumbers = new Set();
     issues = (issues || []).filter(iss => iss && !seenNumbers.has(iss.number) && seenNumbers.add(iss.number));
     const nodes = issues.map((iss, id) => {
@@ -128,13 +140,13 @@ export const nodeRadius = n => Math.min(18, 5 + Math.sqrt(n.comments + n.reactio
  * Repulsion only between nearby nodes (a grid), springs along edges, a gentle pull to the centre.
  * @returns {Map<id, {x, y}>}
  */
-export function forceLayout(data, ids, adj, { iterations = 260, seed = 7 } = {}) {
+export function forceLayout(data, ids, adj, { iterations = 260, seed = 7, spacing = 1 } = {}) {
     const n = ids.length;
     const pos = new Map();
     if (!n) return pos;
     const rand = rng(seed + n);
     const topics = Math.max(1, data.topics.length);
-    const spread = Math.sqrt(n) * 28;
+    const spread = Math.sqrt(n) * 28 * spacing;
     const X = new Float64Array(n), Y = new Float64Array(n), VX = new Float64Array(n), VY = new Float64Array(n);
     const local = new Map(ids.map((id, i) => [id, i]));
     ids.forEach((id, i) => {
@@ -150,9 +162,9 @@ export function forceLayout(data, ids, adj, { iterations = 260, seed = 7 } = {})
         const a = local.get(e.a), b = local.get(e.b);
         if (a === undefined || b === undefined) continue;
         if (!adj[e.a].includes(e.b)) continue;
-        springs.push([a, b, e.ref ? 55 : 80]);
+        springs.push([a, b, (e.ref ? 55 : 80) * spacing]);
     }
-    const CELL = 90, REPEL = 1800;
+    const CELL = 90 * spacing, REPEL = 1800 * spacing * spacing;
     for (let it = 0; it < iterations; it++) {
         const cool = 1 - it / iterations;
         const grid = new Map();
@@ -228,7 +240,7 @@ const STATE_TEXT = { open: 'Open', closed: 'Closed', merged: 'Merged', answered:
  */
 export function mountIssueGraph(container, data, opts) {
     const W = opts.words || { one: 'issue', noun: 'issues', One: 'Issue' };
-    const state = { refs: true, similar: true, unlinked: false, hover: null, selected: null, matches: [], matchAt: -1, tx: 0, ty: 0, scale: 1 };
+    const state = { refs: true, similar: true, unlinked: false, topic: null, hover: null, selected: null, matches: [], matchAt: -1, tx: 0, ty: 0, scale: 1 };
     let adj, comp, shown, pos;
 
     container.textContent = '';
@@ -265,15 +277,18 @@ export function mountIssueGraph(container, data, opts) {
 
     function renderLegend() {
         legend.textContent = '';
-        data.topics.forEach(t => {
-            const item = el('span', { class: 'dg-legend-item' });
-            const sw = el('span', { class: 'dg-swatch ig-swatch', 'aria-hidden': 'true' });
-            sw.style.background = t.color;
+        data.topics.forEach((t, i) => {
+            // A button: picking a topic highlights its threads, so identity never rests on colour alone.
+            const item = el('button', { type: 'button', class: `dg-legend-item dg-legend-btn${state.topic === i ? ' active' : ''}`, 'aria-pressed': state.topic === i ? 'true' : 'false', title: 'Highlight this topic' });
+            const sw = el('span', { class: 'dg-swatch', 'aria-hidden': 'true' });
+            sw.style.background = topicColor(data.topics, i);
             item.append(sw, document.createTextNode(t.label));
+            item.addEventListener('click', () => { state.topic = state.topic === i ? null : i; renderLegend(); highlight(); });
             legend.appendChild(item);
         });
         const none = el('span', { class: 'dg-legend-item' });
         const sw = el('span', { class: 'dg-swatch', 'aria-hidden': 'true' });
+        sw.style.background = 'var(--t-none)';
         none.append(sw, document.createTextNode(data.topics.length ? 'No topic' : 'Topics appear once they are found'));
         const hollow = el('span', { class: 'dg-legend-item' });
         hollow.append(el('span', { class: 'dg-swatch ig-swatch-closed', 'aria-hidden': 'true' }), document.createTextNode('Closed'));
@@ -306,17 +321,15 @@ export function mountIssueGraph(container, data, opts) {
             const n = data.nodes[id];
             const p = pos.get(id);
             const r = nodeRadius(n);
-            const color = n.topic >= 0 ? data.topics[n.topic].color : NO_TOPIC;
             const g = svg('g', { class: `ig-node ig-${n.state}${opts.isSelected(n.number) ? ' ig-picked' : ''}`, transform: `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`, 'data-id': id });
             const title = svg('title');
             title.textContent = `#${n.number} ${n.title}`;
+            g.style.setProperty('--c', topicColor(data.topics, n.topic));
             g.appendChild(title);
             g.appendChild(svg('circle', { class: 'ig-ring', r: r + 4 }));
             const shape = n.isPR
                 ? svg('rect', { class: 'ig-dot', x: -r, y: -r, width: r * 2, height: r * 2, rx: 3 })
                 : svg('circle', { class: 'ig-dot', r });
-            shape.setAttribute('fill', n.state === 'open' ? color : 'var(--dg-sheet)');
-            shape.setAttribute('stroke', color);
             g.appendChild(shape);
             const label = svg('text', { class: 'ig-label', x: r + 3, y: 4 });
             label.textContent = `#${n.number}`;
@@ -332,7 +345,8 @@ export function mountIssueGraph(container, data, opts) {
 
     function highlight() {
         const focus = state.hover !== null ? state.hover : state.selected;
-        const near = focus !== null && pos.has(focus) ? new Set([focus, ...adj[focus]]) : null;
+        let near = focus !== null && pos.has(focus) ? new Set([focus, ...adj[focus]]) : null;
+        if (!near && state.topic !== null) near = new Set(shown.filter(id => data.nodes[id].topic === state.topic));
         canvas.classList.toggle('dg-dimmed', Boolean(near));
         const hits = new Set(state.matches);
         for (const [id, g] of nodeEls) {
@@ -341,7 +355,7 @@ export function mountIssueGraph(container, data, opts) {
             g.classList.toggle('dg-match-hit', hits.has(id));
             g.classList.toggle('ig-picked', opts.isSelected(data.nodes[id].number));
         }
-        for (const e of edgeEls) e.line.classList.toggle('dg-on', Boolean(near && (e.a === focus || e.b === focus)));
+        for (const e of edgeEls) e.line.classList.toggle('dg-on', Boolean(near && (focus !== null ? (e.a === focus || e.b === focus) : (near.has(e.a) && near.has(e.b)))));
     }
 
     function fit() {

@@ -8,6 +8,8 @@ import { fetchIssuesManifest, fetchCommentsForIssues } from './github-issues-api
 import { fetchDiscussionsManifest, fetchCommentsForDiscussions, estimateDiscussionCommentCost } from './github-discussions-api.js';
 import { processIssueThread, extractIssueReferences, filterIncludedComments } from './issue-cleaner.js';
 import { toIssueGraphData, mountIssueGraph } from './issue-graph.js';
+import { toPhraseData, mountPhraseMap } from './phrase-map.js';
+import { toTimelineData, mountTopicTimeline } from './topic-timeline.js';
 import { buildIssuesOutput, chunkIssuesOutput } from './issue-formatters.js';
 import { escapeXml } from './formatters.js';
 import { estimateTokens, estimateTokensAsync } from './tokenizer.js';
@@ -956,12 +958,46 @@ const mapEls = {
     dialog: document.getElementById('mapDialog'),
     title: document.getElementById('mapDialogTitle'),
     mount: document.getElementById('mapMount'),
-    close: document.getElementById('mapCloseBtn')
+    close: document.getElementById('mapCloseBtn'),
+    tabs: [...document.querySelectorAll('#mapDialog [role="tab"]')]
 };
 let mapView = null;
+let mapTab = 'links';
 
-function openMap() {
-    if (!allIssues.length || !mapEls.dialog) return;
+/** What the phrase map and timeline need to list a thread. */
+const threadInfo = (num) => {
+    const iss = allIssues.find(i => i.number === num);
+    return iss ? { title: iss.title || '', url: typeof iss.htmlUrl === 'string' && /^https:\/\/github\.com\//.test(iss.htmlUrl) ? iss.htmlUrl : '' } : null;
+};
+const mapSelection = {
+    isSelected: n => selectedIssueNumbers.has(n),
+    setSelected: (numbers, on) => {
+        for (const n of numbers) { if (on) selectedIssueNumbers.add(n); else selectedIssueNumbers.delete(n); }
+        renderIssuesList();
+    }
+};
+/** "Show these in the list": filter the list to those threads, like a topic pill, and close the map. */
+function showInList(label, numbers) {
+    activeTopicFilter = null;
+    toggleTopicFilter('custom-map', label, numbers);
+    mapEls.dialog.close();
+    showToast(`Showing ${numbers.length} ${numbers.length === 1 ? W.one : W.noun}: ${label}.`, 'info');
+}
+
+function mountMapTab(view) {
+    if (mapView) { mapView.destroy(); mapView = null; }
+    mapTab = view;
+    for (const t of mapEls.tabs) t.setAttribute('aria-selected', t.dataset.view === view ? 'true' : 'false');
+    if (view === 'phrases') {
+        mapView = mountPhraseMap(mapEls.mount, toPhraseData({ phrases: nlpResults.phrases || [], clusters: nlpResults.clusters }),
+            { words: W, thread: threadInfo, showInList, ...mapSelection });
+        return;
+    }
+    if (view === 'timeline') {
+        mapView = mountTopicTimeline(mapEls.mount, toTimelineData({ issues: allIssues, clusters: nlpResults.clusters }),
+            { words: W, thread: threadInfo, showInList, ...mapSelection });
+        return;
+    }
     const data = toIssueGraphData({
         issues: allIssues,
         clusters: nlpResults.clusters,
@@ -970,22 +1006,29 @@ function openMap() {
         extraTexts: n => (cachedCommentsByIssue.get(n) || []).map(c => c.body || ''),
         extractRefs: extractIssueReferences
     });
+    mapView = mountIssueGraph(mapEls.mount, data, { words: W, ...mapSelection });
+}
+
+function openMap() {
+    if (!allIssues.length || !mapEls.dialog) return;
     const repo = currentRepoInfo ? `${currentRepoInfo.owner}/${currentRepoInfo.repo}` : '';
-    mapEls.title.textContent = `${W.Noun} map${repo ? `: ${repo}` : ''}${nlpPending ? ' (topics still being found)' : ''}`;
+    mapEls.title.textContent = `${W.Noun}${repo ? `: ${repo}` : ''}${nlpPending ? ' (topics still being found)' : ''}`;
     if (typeof mapEls.dialog.showModal === 'function') mapEls.dialog.showModal(); else mapEls.dialog.setAttribute('open', '');
-    mapView = mountIssueGraph(mapEls.mount, data, {
-        words: W,
-        isSelected: n => selectedIssueNumbers.has(n),
-        setSelected: (numbers, on) => {
-            for (const n of numbers) { if (on) selectedIssueNumbers.add(n); else selectedIssueNumbers.delete(n); }
-            renderIssuesList();
-        }
-    });
+    mountMapTab(mapTab);
 }
 
 if (mapEls.dialog) {
     mapEls.btn.addEventListener('click', openMap);
     mapEls.close.addEventListener('click', () => mapEls.dialog.close());
+    mapEls.tabs.forEach((t, i) => {
+        t.addEventListener('click', () => mountMapTab(t.dataset.view));
+        t.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            const next = mapEls.tabs[(i + (e.key === 'ArrowRight' ? 1 : mapEls.tabs.length - 1)) % mapEls.tabs.length];
+            next.focus();
+            mountMapTab(next.dataset.view);
+        });
+    });
     mapEls.dialog.addEventListener('close', () => { if (mapView) { mapView.destroy(); mapView = null; } });
 }
 
@@ -1050,6 +1093,21 @@ function renderNlpBanner() {
         btn.className = 'nlp-pill active custom-topic-pill';
         btn.title = 'Click to clear this topic';
         btn.innerHTML = `<span>${escapeXml(f.label)}</span><span class="nlp-pill-count">${f.matchCount}${f.related.size ? ` + ${f.related.size} related` : ''}</span>`;
+        btn.addEventListener('click', clearTopicFilter);
+        dom.topicClustersContainer.appendChild(btn);
+    }
+    if (activeTopicFilter && activeTopicFilter.type === 'custom-map') {
+        // A group picked on the map (a phrase, or a topic in one period of the timeline).
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'nlp-pill active custom-topic-pill';
+        btn.title = 'Click to clear this filter';
+        const name = document.createElement('span');
+        name.textContent = activeTopicFilter.label;
+        const count = document.createElement('span');
+        count.className = 'nlp-pill-count';
+        count.textContent = String(activeTopicFilter.numbers.size);
+        btn.append(name, count);
         btn.addEventListener('click', clearTopicFilter);
         dom.topicClustersContainer.appendChild(btn);
     }
@@ -1199,7 +1257,7 @@ dom.loadIssuesBtn.addEventListener('click', async () => {
     cachedCommentsByIssue.clear();
     fetchFailuresMap.clear();
     activeTopicFilter = null;
-    nlpResults = { clusters: [], ngrams: [], similarMap: {} };
+    nlpResults = { clusters: [], ngrams: [], phrases: [], similarMap: {} };
     if (dom.customTopicInput) dom.customTopicInput.value = '';
     currentNlpRequestId++;
     nlpPending = false;
