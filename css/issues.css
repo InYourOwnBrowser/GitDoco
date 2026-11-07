@@ -566,3 +566,7 @@ a.issue-link { color: var(--ink-soft); }
 
 /* The collapsed "Common phrases" box is only as tall as its title. */
 .nlp-body { align-items: start; }
+
+/* Comment cost hint: amber when it takes a big share of the hourly GitHub limit, red when it exceeds what is left. */
+.field-helper.cost-warn { color: var(--near); }
+.field-helper.cost-over { color: var(--over); font-weight: 600; }
