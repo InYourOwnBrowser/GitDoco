@@ -18,6 +18,9 @@ import { findManifestPaths, parseManifest } from './manifest-parsers.js';
 import { parseLockfile, LOCKFILE_NAMES, compareVersions } from './lockfiles.js';
 import { classifyLicense } from './license-classify.js';
 
+/** The project itself, as the source of edges to its direct dependencies. */
+export const ROOT_KEY = '(project)';
+
 export const DEPS_DEV_BASE = 'https://api.deps.dev/v3';
 const SYSTEMS = { npm: 'npm', pypi: 'pypi', go: 'go', cargo: 'cargo' };
 const GRAPH_SYSTEMS = new Set(['npm', 'pypi', 'cargo']);
@@ -283,10 +286,15 @@ export const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'unknown'];
  *   status: 'ok'|'not-found'|'error'|'not-checked', error? }
  * (latest/outdated/health only for direct dependencies.)
  *
+ * `edges` lists who depends on whom as [fromKey, toKey] pairs of package keys; fromKey is
+ * ROOT_KEY for the project's own direct dependencies (and its workspace members' dependencies).
+ * Edges come from the lockfile, or from deps.dev's resolved graph when there is no lockfile.
+ * Pipfile.lock has no edges, so its transitive packages appear unconnected.
+ *
  * Every package found is returned. Only the first `maxLookups` are looked up on deps.dev (direct
  * first, then runtime, then those closest to a direct dependency); the rest have status
  * 'not-checked'. Lookups are cached, so calling again with a higher limit only fetches the new ones.
- * @returns {Promise<{ packages: object[], unchecked: number, capped: boolean }>}
+ * @returns {Promise<{ packages: object[], edges: [string, string][], unchecked: number, capped: boolean }>}
  */
 export async function resolveLicenses(directDeps, options = {}) {
     const {
@@ -306,6 +314,9 @@ export async function resolveLicenses(directDeps, options = {}) {
     let total = 0;
     const tick = () => { done++; if (onProgress) onProgress(done, total); };
     let capped = false;
+    const edgeSet = new Set();
+    const link = (from, to) => { if (from && to && from !== to) edgeSet.add(`${from}\n${to}`); };
+    const pkgKey = (ecosystem, name, version) => `${ecosystem}|${name}|${version || ''}`;
 
     const add = (p) => {
         const key = `${p.ecosystem}|${p.name}|${p.version || ''}`;
@@ -349,7 +360,10 @@ export async function resolveLicenses(directDeps, options = {}) {
             relation: d.indirect ? 'transitive' : 'direct', dev: d.dev,
             manifests: [...(d.manifests || [d.manifest])]
         });
-        if (rec) directRecs.push({ rec, wanted: d });
+        if (rec) {
+            directRecs.push({ rec, wanted: d });
+            if (rec.relation === 'direct') link(ROOT_KEY, rec.key);
+        }
         tick();
     }, signal);
 
@@ -375,7 +389,10 @@ export async function resolveLicenses(directDeps, options = {}) {
                 const childVia = node.local && id !== startId ? workspaceLabel(node) : via;
                 const edges = [...node.deps].map(t => [t, isDev]);
                 if (node.local && includeDev) edges.push(...[...node.devDeps].map(t => [t, true]));
+                const fromKey = node.local ? ROOT_KEY : pkgKey(g.ecosystem, node.name, node.version);
                 for (const [next, nextDev] of edges) {
+                    const target = g.nodes.get(next);
+                    if (target && !target.local) link(fromKey, pkgKey(g.ecosystem, target.name, target.version));
                     if (seen.has(next)) continue;
                     seen.add(next);
                     const n = g.nodes.get(next);
@@ -415,6 +432,9 @@ export async function resolveLicenses(directDeps, options = {}) {
                 const graph = await depsDevGet(`${pkgPath(rec.ecosystem, rec.name)}/versions/${encodeURIComponent(rec.version)}:dependencies`, signal);
                 const nodes = (graph && graph.nodes) || [];
                 const paths = graphPaths(nodes, (graph && graph.edges) || []);
+                const keyAt = i => (nodes[i] && nodes[i].relation === 'SELF' ? rec.key
+                    : nodes[i] && nodes[i].versionKey ? pkgKey(rec.ecosystem, nodes[i].versionKey.name, nodes[i].versionKey.version) : null);
+                for (const e of (graph && graph.edges) || []) link(keyAt(e.fromNode), keyAt(e.toNode));
                 nodes.forEach((n, i) => {
                     if (n.relation === 'SELF' || !n.versionKey) return;
                     add({
@@ -471,7 +491,8 @@ export async function resolveLicenses(directDeps, options = {}) {
 
     if (details) await addDetails(toCheck, { concurrency, signal, onTick: () => tick(), onTotal: n => { total += n; } });
     const unchecked = all.length - toCheck.length;
-    return { packages: all, unchecked, capped: capped || unchecked > 0 };
+    const edges = [...edgeSet].map(e => e.split('\n')).filter(([from, to]) => (from === ROOT_KEY || packages.has(from)) && packages.has(to));
+    return { packages: all, edges, unchecked, capped: capped || unchecked > 0 };
 }
 
 /**

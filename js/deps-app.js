@@ -4,7 +4,9 @@
  */
 import { parseRepoInput, isSafeBranchName } from './github-api.js';
 import { parseCompareInput, diffPackages, summarizeDiff } from './deps-compare.js';
-import { fetchPullRequest, fetchRepoInfo, fetchRepoManifests, readZipManifests, collectDirectDependencies, resolveLicenses } from './deps-api.js';
+import { fetchPullRequest, fetchRepoInfo, fetchRepoManifests, readZipManifests, collectDirectDependencies, resolveLicenses, ROOT_KEY } from './deps-api.js';
+import { toGraphData, mountGraph } from './dep-graph.js';
+import { toStandaloneGraphHtml, readmeSnippets } from './dep-graph-export.js';
 import { classifyLicense, guessLicenseFromText, LICENSE_GROUPS, GROUP_LABELS, GROUP_HINTS } from './license-classify.js';
 import { buildDepsOutput, groupCounts, sortPackages, collectAdvisories } from './deps-formatters.js';
 
@@ -52,6 +54,9 @@ const dom = {
     tabListBtn: $('tabListBtn'), tabOutputBtn: $('tabOutputBtn'), depsCard: $('depsCard'), outputCard: $('outputCard'),
     mobilePrimaryBtn: $('mobilePrimaryBtn'), step1: $('step1'), step2: $('step2'), step3: $('step3'),
     themeToggleBtn: $('themeToggleBtn'), shareUrlBtn: $('shareUrlBtn'), toastContainer: $('toastContainer'),
+    graphBtn: $('graphBtn'), graphDialog: $('graphDialog'), graphDialogTitle: $('graphDialogTitle'), graphMount: $('graphMount'),
+    graphShareBtn: $('graphShareBtn'), graphShare: $('graphShare'), graphCloseBtn: $('graphCloseBtn'), graphSnippet: $('graphSnippet'),
+    graphCopyLinkBtn: $('graphCopyLinkBtn'), graphCopyImageBtn: $('graphCopyImageBtn'), graphSvgBtn: $('graphSvgBtn'), graphHtmlBtn: $('graphHtmlBtn'),
     tabCodeLink: $('tabCodeLink'), tabIssuesLink: $('tabIssuesLink'), tabDiscussionsLink: $('tabDiscussionsLink'), tabDepsLink: $('tabDepsLink')
 };
 
@@ -76,6 +81,8 @@ let state = {
     compare: null,         // { baseLabel, headLabel, baseManifests } when comparing two refs or a PR
     diff: null,
     packages: [],
+    edges: [],             // [fromKey, toKey] from resolveLicenses, for the graph
+    openGraphAfterLoad: false, // ?view=graph (from a /owner/repo/graph link)
     warnings: [],
     groupFilter: null,
     output: null,
@@ -510,6 +517,8 @@ function fillEcosystemFilter() {
 function resetView() {
     hideCopyHint();
     state.packages = [];
+    state.edges = [];
+    if (dom.graphBtn) dom.graphBtn.disabled = true;
     state.maxLookups = DEFAULT_LOOKUPS;
     state.unchecked = 0;
     state.compare = null;
@@ -695,7 +704,7 @@ function checkRemaining() {
 /** Re-runs the deps.dev lookup with the current options (results are cached, so this is quick). */
 async function resolve(signal, myGen) {
     const t0 = Date.now();
-    const { packages, capped, unchecked } = await resolveLicenses(state.directDeps, {
+    const { packages, capped, unchecked, edges } = await resolveLicenses(state.directDeps, {
         locks: state.locks,
         maxLookups: state.maxLookups,
         includeTransitive: dom.includeTransitive.checked,
@@ -705,6 +714,7 @@ async function resolve(signal, myGen) {
     });
     if (myGen !== generation) return;
     state.packages = packages;
+    state.edges = edges || [];
     applyPolicy();
     state.diff = null;
     if (state.compare && state.compare.baseManifests) {
@@ -741,6 +751,8 @@ async function resolve(signal, myGen) {
     renderWarnings();
     setAppState('loaded');
     renderAll();
+    if (dom.graphBtn) dom.graphBtn.disabled = packages.length === 0;
+    if (state.openGraphAfterLoad && packages.length) { state.openGraphAfterLoad = false; openGraph(); }
     log(`[SUCCESS] ${packages.length} packages checked in ${((Date.now() - t0) / 1000).toFixed(1)}s.`);
     showToast(`Checked ${packages.length} packages.`, 'info');
 }
@@ -873,6 +885,87 @@ dom.htmlReportBtn.addEventListener('click', () => {
     saveFile(toHtmlReport(reportContext()), `${fileBase()}-dependency-report.html`, 'text/html');
     showToast('Downloaded the report. Open it in a browser to read or print it.', 'info');
 });
+// ------------------------------------------------------------------ dependency graph
+
+let graphView = null;
+
+function graphData() {
+    return toGraphData({
+        packages: state.packages,
+        edges: state.edges,
+        rootKey: ROOT_KEY,
+        label: state.repoName || 'project',
+        groupLabels: GROUP_LABELS,
+        links: p => ({ url: registryUrl(p.ecosystem, p.name, p.version), advisoryUrl: id => advisoryUrl(id) })
+    });
+}
+
+/** "owner/name" when the packages came from a GitHub repository (not a .zip). */
+const githubRepoName = () => (state.source && state.source.kind === 'github' ? `${state.source.owner}/${state.source.repo}` : '');
+
+function openGraph() {
+    if (!state.packages.length || !dom.graphDialog) return;
+    const data = graphData();
+    dom.graphDialogTitle.textContent = `Dependency graph: ${data.label}`;
+    const snippets = readmeSnippets(githubRepoName());
+    dom.graphSnippet.value = snippets ? snippets.image : 'README links need a repository loaded from GitHub. You can still download the interactive page or the picture.';
+    dom.graphCopyLinkBtn.disabled = !snippets;
+    dom.graphCopyImageBtn.disabled = !snippets;
+    if (typeof dom.graphDialog.showModal === 'function') dom.graphDialog.showModal(); else dom.graphDialog.setAttribute('open', '');
+    graphView = mountGraph(dom.graphMount, data);
+}
+
+function closeGraph() {
+    if (graphView) { graphView.destroy(); graphView = null; }
+    dom.graphShare.hidden = true;
+    dom.graphShareBtn.setAttribute('aria-expanded', 'false');
+}
+
+async function copySnippet(kind) {
+    const snippets = readmeSnippets(githubRepoName());
+    if (!snippets) return;
+    dom.graphSnippet.value = snippets[kind];
+    try {
+        await navigator.clipboard.writeText(snippets[kind]);
+        showToast(kind === 'image' ? 'Copied. Commit the picture as docs/dependency-graph.svg, then paste this into your README.' : 'Copied. Paste it into your README.', 'info');
+    } catch (_) {
+        dom.graphSnippet.select();
+    }
+}
+
+if (dom.graphDialog) {
+    dom.graphBtn.addEventListener('click', openGraph);
+    dom.graphCloseBtn.addEventListener('click', () => dom.graphDialog.close());
+    dom.graphDialog.addEventListener('close', closeGraph);
+    dom.graphShareBtn.addEventListener('click', () => {
+        const open = dom.graphShare.hidden;
+        dom.graphShare.hidden = !open;
+        dom.graphShareBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    dom.graphCopyLinkBtn.addEventListener('click', () => copySnippet('link'));
+    dom.graphCopyImageBtn.addEventListener('click', () => copySnippet('image'));
+    dom.graphSvgBtn.addEventListener('click', () => {
+        if (!graphView) return;
+        saveFile(graphView.getSvgMarkup(), 'dependency-graph.svg', 'image/svg+xml');
+        showToast('Downloaded the picture of the graph as shown now.', 'info');
+    });
+    dom.graphHtmlBtn.addEventListener('click', async () => {
+        try {
+            const [engineSource, css] = await Promise.all(['js/dep-graph.js', 'css/dep-graph.css'].map(async (path) => {
+                const res = await fetch(path);
+                if (!res.ok) throw new Error(`Could not read ${path}`);
+                return res.text();
+            }));
+            const generated = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+            const html = await toStandaloneGraphHtml({ data: graphData(), engineSource, css, generated });
+            saveFile(html, 'dependency-graph.html', 'text/html');
+            showToast('Downloaded the interactive page. Open it in a browser, or publish it with GitHub Pages.', 'info');
+        } catch (err) {
+            showToast(`Could not build the page: ${err.message}`, 'error');
+        }
+    });
+}
+
 dom.noticesBtn.addEventListener('click', () => {
     saveFile(toThirdPartyNotices({ repoName: state.repoName, packages: filteredPackages() }), 'THIRD_PARTY_NOTICES.md', 'text/markdown');
     showToast('Downloaded THIRD_PARTY_NOTICES.md. Add each package\'s copyright and license text before publishing it.', 'info');
@@ -998,6 +1091,7 @@ if (dom.exampleRepos) {
 
 const params = new URLSearchParams(window.location.search);
 if (params.get('repo')) dom.repoUrl.value = params.get('repo');
+state.openGraphAfterLoad = params.get('view') === 'graph';
 if (params.get('compare') && dom.compareInput) dom.compareInput.value = params.get('compare').slice(0, 300);
 // ?base= (from a GitHub compare link): compare with that branch instead of the default one.
 if (params.get('base') && isSafeBranchName(params.get('base'))) state.compareBase = params.get('base');

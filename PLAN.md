@@ -309,6 +309,19 @@ findings, and SPDX (tag-value or JSON) as a second SBOM format.
       (runtime packages by license, links to license texts, and a reminder that copyright lines
       and full license texts must come from each package).
 
+## Phase 13: Dependency graph (done)
+
+- [x] `resolveLicenses` keeps the dependency edges (from lockfiles, or deps.dev's resolved graph).
+- [x] Graph button on the Dependencies page: a layered graph (project on the left, deeper packages to
+      the right), coloured by license group, advisories and policy flags marked, dev-only dashed.
+      Search, pan/zoom, expand/collapse (graphs over 250 packages open with only the direct
+      dependencies expanded), "Problems only", hover/selection highlights the paths to the project,
+      a details panel ("why it is here", required by, advisories), keyboard navigation.
+- [x] Sharing: `/owner/repo/graph` opens the live graph (README link), a static SVG picture to
+      commit, and a self-contained interactive HTML page for GitHub Pages (inlined engine and data,
+      CSP `default-src 'none'` with a hashed script).
+- [ ] Possible later: a GitHub Action that regenerates the SVG on each push.
+
 ## Hosting and repository move
 
 GitDoco moved to github.com/InYourOwnBrowser/GitDoco (from LukeAFullard/GitHub-tools, with its full

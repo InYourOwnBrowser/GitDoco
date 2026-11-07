@@ -10,6 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/issues.css">
+    <link rel="stylesheet" href="css/dep-graph.css">
     <link rel="stylesheet" href="css/promo-banner.css">
 </head>
 <body>
@@ -251,7 +252,10 @@
         <section class="pane active-mobile" id="depsCard" role="tabpanel" aria-labelledby="tabListBtn">
             <div class="pane-header">
                 <span class="pane-title">Packages</span>
-                <span id="matchCount" class="badge" style="font-family: var(--font-mono); font-size: 0.78125rem; color: var(--ink-soft);"></span>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span id="matchCount" class="badge" style="font-family: var(--font-mono); font-size: 0.78125rem; color: var(--ink-soft);"></span>
+                    <button type="button" id="graphBtn" class="secondary btn-xs" disabled title="An interactive map of who depends on whom: licenses, advisories and why each package is here">Graph</button>
+                </div>
             </div>
             <div class="issues-filter-panel">
                 <div class="tree-search-bar" style="padding: 0; border: none;">
@@ -340,6 +344,34 @@
 
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 </div>
+
+<dialog id="graphDialog" class="graph-dialog" aria-labelledby="graphDialogTitle">
+    <div class="graph-dialog-head">
+        <h2 id="graphDialogTitle">Dependency graph</h2>
+        <button type="button" id="graphShareBtn" class="secondary btn-sm" aria-expanded="false" aria-controls="graphShare">Add to your GitHub page</button>
+        <button type="button" id="graphCloseBtn" class="secondary btn-sm">Close</button>
+    </div>
+    <div id="graphShare" class="graph-share" hidden>
+        <p><strong>Link from your README.</strong> Anyone can open the live, interactive graph on GitDoco (public repositories; the graph is built in the visitor's browser, nothing is stored):</p>
+        <div class="graph-share-row">
+            <button type="button" id="graphCopyLinkBtn" class="secondary btn-xs">Copy README link</button>
+            <button type="button" id="graphCopyImageBtn" class="secondary btn-xs">Copy README link with a picture</button>
+            <button type="button" id="graphSvgBtn" class="secondary btn-xs" title="A static picture of the graph as shown now, to commit to your repository">Download picture (SVG)</button>
+        </div>
+        <textarea id="graphSnippet" readonly aria-label="README snippet"></textarea>
+        <p><strong>Or host it yourself.</strong> A single interactive page with this graph built in. It works offline and loads nothing from anywhere:</p>
+        <ol>
+            <li>Download it and commit it to your repository, for example as <code>docs/dependency-graph.html</code>.</li>
+            <li>Turn on GitHub Pages for the <code>docs</code> folder (Settings &rarr; Pages).</li>
+            <li>Link to it from your README.</li>
+        </ol>
+        <div class="graph-share-row">
+            <button type="button" id="graphHtmlBtn" class="secondary btn-xs">Download interactive page (HTML)</button>
+        </div>
+        <p class="field-helper">Both downloads contain the package names of this repository. For a private repository that includes internal package names, so only publish them if you are happy for those to be public.</p>
+    </div>
+    <div id="graphMount" class="graph-mount"></div>
+</dialog>
 
 <script type="module" src="js/deps-app.js"></script>
 </body>
