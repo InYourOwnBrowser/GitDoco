@@ -13,8 +13,10 @@
 
 
     <link rel="stylesheet" href="css/landing.css">
+    <link rel="stylesheet" href="css/promo-banner.css">
 </head>
 <body>
+<script src="js/promo-banner.js"></script>
 <header class="site-header">
     <div class="wrap header-row">
         <a class="brand" href="index.html">
@@ -56,6 +58,7 @@
         <li>Instructions you type for the AI in each tool.</li>
         <li>The last public repository you loaded (not one loaded with a token, and not a private one).</li>
         <li>That you accepted the notice shown before your first request, so it is not shown every time.</li>
+        <li>That you closed the TimeDoco banner, so it does not come back.</li>
     </ul>
     <div class="clear-box">
         <p><strong>Saved in this browser now:</strong> <span id="savedKeys">Checking…</span></p>
@@ -64,7 +67,7 @@
     </div>
 
     <h2>4. Links to other sites</h2>
-    <p>Links to GitHub, package registries, deps.dev and advisory databases open in a new tab without telling the site which GitDoco page you came from. Once there, that site's own privacy policy applies.</p>
+    <p>Links to GitHub, package registries, deps.dev and advisory databases open in a new tab without telling the site which GitDoco page you came from. The TimeDoco banner links to timedoco.com with a source tag (<code>utm_source=gitdoco</code>) in the address, so that site can tell the visit came from GitDoco; nothing about you is added, and nothing is sent unless you click it. Once there, that site's own privacy policy applies.</p>
 
     <h2>5. Hosting</h2>
     <p>GitDoco is a static website served by a hosting provider and its content delivery network. Like all web servers, they automatically log standard request details (such as IP address, browser type and the page requested) to deliver the site and protect it from abuse. GitDoco does not use these logs to identify or profile you.</p>
