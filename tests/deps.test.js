@@ -165,7 +165,8 @@ function installFakeDepsDev() {
             const g = graphs[`${m[1]}/${m[2]}/${m[3]}`];
             if (!g) return json({ error: 'dependencies not found' }, 404);
             return json({ nodes: [{ versionKey: { name: m[2], version: m[3] }, relation: 'SELF' },
-                ...g.map(s => { const [n, v] = s.split('@'); return { versionKey: { name: n, version: v }, relation: 'DIRECT' }; })] });
+                ...g.map(s => { const [n, v] = s.split('@'); return { versionKey: { name: n, version: v }, relation: 'DIRECT' }; })],
+                edges: g.map((_, i) => ({ fromNode: 0, toNode: i + 1 })) });
         }
         m = /^systems\/(\w+)\/packages\/(.+)\/versions\/([^/]+)$/.exec(path);
         if (m) {
@@ -191,7 +192,12 @@ test('resolveLicenses: direct + transitive, version fallbacks, dev excluded, Go 
         { path: 'go.mod', text: 'module m\nrequire (\n github.com/spf13/cobra v1.8.0\n golang.org/x/sys v0.18.0 // indirect\n)\n' }
     ]);
     let lastProgress = null;
-    const { packages, capped } = await resolveLicenses(deps, { onProgress: (d, t) => { lastProgress = [d, t]; } });
+    const { packages, capped, edges } = await resolveLicenses(deps, { onProgress: (d, t) => { lastProgress = [d, t]; } });
+    const edgeText = edges.map(([f, t]) => `${f} -> ${t}`).sort();
+    assert.ok(edgeText.includes('(project) -> npm|express|4.18.2'), 'root -> direct');
+    assert.ok(edgeText.includes('npm|express|4.18.2 -> npm|gpl-lib|2.0.0'), 'deps.dev graph edge');
+    assert.ok(edgeText.includes('pypi|pyqt5|5.15.10 -> pypi|pyqt5-qt5|5.15.2'));
+    assert.ok(!edgeText.some(e => e.includes('golang.org/x/sys')), 'a Go // indirect module has no known parent');
     assert.equal(capped, false);
     assert.equal(lastProgress[0], lastProgress[1], 'progress reaches 100%');
     const by = Object.fromEntries(packages.map(p => [p.name, p]));

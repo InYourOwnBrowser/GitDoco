@@ -343,7 +343,10 @@ test('lockfile versions and tree, advisory severity, outdated and health, end to
     assert.deepEqual(lockfilesUsed, ['package-lock.json']);
     assert.deepEqual(direct.map(d => `${d.name}@${d.version}:${d.versionKind}`).sort(), ['express@4.21.2:locked', 'old-lib@1.0.0:locked']);
 
-    const { packages } = await resolveLicenses(direct, { locks });
+    const { packages, edges } = await resolveLicenses(direct, { locks });
+    assert.deepEqual(edges.map(([f, t]) => `${f} -> ${t}`).sort(), [
+        '(project) -> npm|express|4.21.2', '(project) -> npm|old-lib|1.0.0', 'npm|express|4.21.2 -> npm|qs|6.13.0'
+    ], 'edges from the lockfile');
     const by = Object.fromEntries(packages.map(p => [p.name, p]));
     assert.deepEqual([by.qs.relation, by.qs.version, by.qs.versionKind, by.qs.via], ['transitive', '6.13.0', 'locked', ['express']], 'transitive from the lockfile');
     assert.ok(!calls.some(u => u.includes(':dependencies')), 'no deps.dev graph requests when a lockfile covers the tree');

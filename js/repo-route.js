@@ -14,6 +14,7 @@
  *   /owner/repo/tree|blob/<ref>[/<path>]          Code, at that branch (and folder)
  *   /owner/repo/commit/<sha>                      Code, at that commit
  *   /owner/repo/network/dependencies, /security   Dependencies
+ *   /owner/repo/graph                             Dependencies, opening the dependency graph
  *   /owner/repo/<anything else>                   the pick-a-tool page
  *
  * Links from a shortcut carry go=1: the tool starts loading the repo (after the one-time notice).
@@ -87,6 +88,8 @@ export function routeFor(pathname) {
             const target = `${github}/tree/${tail.map(encodeURIComponent).join('/')}`;
             return { tool: 'code', repo, href: link('code.html', { repo: target }) };
         }
+        case 'graph':
+            return { tool: 'deps', repo, href: link('deps.html', { repo, view: 'graph' }) };
         case 'network':
         case 'security':
             return { tool: 'deps', repo, href: link('deps.html', { repo }) };
