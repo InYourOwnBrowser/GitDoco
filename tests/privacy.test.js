@@ -85,7 +85,7 @@ test('"Clear GitDoco data" covers every key the site stores', () => {
 });
 
 test('license files exist and are published with the site', () => {
-    assert.match(read('LICENSE'), /^MIT License\n\nCopyright \(c\) 2026 LukeAFullard/);
+    assert.match(read('LICENSE'), /^MIT License\n\nCopyright \(c\) 2026 In Your Own Browser/);
     assert.match(read('fonts/OFL.txt'), /SIL OPEN FONT LICENSE Version 1\.1/);
     assert.match(read('LICENSE'), /fonts\/OFL\.txt/);
     const build = read('scripts/build-site.mjs');

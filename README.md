@@ -78,17 +78,29 @@ npx serve .
 
 Navigate to `http://localhost:8000` in your web browser.
 
-### GitHub Pages Deployment
-
-1. Push the repository to GitHub.
-2. Go to **Settings** -> **Pages**.
-3. Set source to **Deploy from a branch** and select `main` (root).
-
 ## Deploying
 
-The site is static: no build step is needed to run it. To publish only the site files (not tests or tooling), run `npm run build` and serve `dist/`. On Cloudflare Pages: build command `node scripts/build-site.mjs`, output directory `dist`, no framework preset; `_headers` sets the security headers. The suggested address is `gitdoco.timedoco.com` (see `PLAN.md`).
+The site is static. `npm run build` copies only the public files (no tests or tooling) into `dist/`. It is served on Cloudflare Pages at `gitdoco.timedoco.com`; `_headers` sets the security headers, and Pages serves `404.html` for unknown paths, which the `/owner/repo` shortcut links rely on (so GitHub Pages is not supported).
 
-**Repository and hosting.** GitDoco lives at [github.com/InYourOwnBrowser/GitDoco](https://github.com/InYourOwnBrowser/GitDoco) (it began as LukeAFullard/GitHub-tools) and deploys from there to Cloudflare Pages on its own domain (e.g. `gitdoco.timedoco.com`). The shortcut links (`/owner/repo/...`) need that own domain, where Cloudflare Pages serves `404.html` for unknown paths: after deploying, open one such link to check.
+Deployment is manual, through `.github/workflows/deploy.yml` (modelled on TimeDoco's):
+
+- **Every push to `main` or `staging`** runs `verify` only: `npm test`, then `npm run build`. Nothing is published.
+- **Deploy by hand:** Actions -> Deploy -> *Run workflow*, pick the branch, then the target:
+  - `preview` from `staging` or `main` publishes to the `staging` branch of the Cloudflare Pages project (`https://staging.gitdoco.pages.dev`).
+  - `production` from `main` only publishes to `gitdoco.timedoco.com`.
+- The deploy job publishes the exact `dist/` that `verify` tested; it does not build again.
+
+One-time setup:
+
+1. Create the Pages project (Direct Upload, production branch `main`): `npx wrangler pages project create gitdoco --production-branch=main`.
+2. Add the custom domain `gitdoco.timedoco.com` to that project (Pages -> Custom domains).
+3. In the GitHub repository, add the secrets `CLOUDFLARE_API_TOKEN` (permission: Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID`.
+4. Optionally create the `preview` and `production` Environments (Settings -> Environments) and add required reviewers to `production`.
+5. Create a `staging` branch to deploy previews from.
+
+After the first production deploy, open an `/owner/repo` link once to check the shortcut routing.
+
+**Repository.** GitDoco lives at [github.com/InYourOwnBrowser/GitDoco](https://github.com/InYourOwnBrowser/GitDoco) (it began as LukeAFullard/GitHub-tools).
 
 **Keep the host from adding scripts.** The privacy promises below depend on the site serving only its own files. In the Cloudflare dashboard, leave these off for the GitDoco project/zone: Web Analytics (automatic setup), Zaraz, Rocket Loader, Email Address Obfuscation and Browser Insights. Some of them inject scripts from the site's own origin (`/cdn-cgi/`), which the CSP's `script-src 'self'` would allow.
 
@@ -118,7 +130,8 @@ The site is static: no build step is needed to run it. To publish only the site 
 ├── terms.html          # Terms of Use
 ├── 404.html            # "Page not found", with links to the tools
 ├── code.html           # Code Packer Web interface
-├── _headers            # Security headers for Cloudflare Pages / Netlify
+├── _headers            # Security headers for Cloudflare Pages
+├── .github/workflows/deploy.yml # Verify on push; manual deploy to Cloudflare Pages
 ├── scripts/build-site.mjs # Copies the public site into dist/ (no dependencies)
 ├── scripts/og-image.html  # Source of assets/og-image.jpg, the image shown when GitDoco is shared
 ├── issues.html         # GitHub Issues Explorer Web interface
