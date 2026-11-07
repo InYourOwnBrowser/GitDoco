@@ -1,0 +1,81 @@
+name: Deploy
+
+# A push runs `verify` only. Deployment is deliberately manual: the `deploy` job
+# is gated on `workflow_dispatch` *and* on the ref it was dispatched from, so
+# landing on main or staging checks the code without shipping it.
+on:
+  push:
+    branches: [main, staging]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Where to deploy'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+
+permissions:
+  contents: read
+
+# A push never cancels a manual deploy, and one deploy never cancels another.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # No dependencies: the project has no lockfile and tests use node:test.
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Upload the verified bundle
+        # `deploy` publishes this rather than building again, so the bundle that
+        # goes out is the one that was tested.
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-dist
+          path: dist
+          retention-days: 1
+          if-no-files-found: error
+
+  deploy:
+    needs: verify
+    # `workflow_dispatch` can be fired from any ref, so the ref is checked too.
+    # Production ships from `main` only; a preview from `main` or `staging`.
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      (
+        (inputs.target == 'production' && github.ref == 'refs/heads/main') ||
+        (inputs.target == 'preview' &&
+          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'))
+      )
+    # Inert until rules are set in Settings -> Environments; the `if:` above is
+    # what enforces the branch today.
+    environment: ${{ inputs.target == 'production' && 'production' || 'preview' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Download the verified bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-dist
+          path: dist
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=gitdoco --branch=${{ inputs.target == 'production' && 'main' || 'staging' }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

@@ -177,7 +177,7 @@ footer or nav.
 - [ ] Name and address: "GitDoco" at `gitdoco.timedoco.com` are used in the page, canonical URL,
       sitemap and social image; change them in `index.html`, `robots.txt` and `sitemap.xml` if
       different.
-- [x] `LICENSE` (MIT, LukeAFullard) added, plus `fonts/OFL.txt` for the bundled IBM Plex fonts.
+- [x] `LICENSE` (MIT, In Your Own Browser) added, plus `fonts/OFL.txt` for the bundled IBM Plex fonts.
 - [ ] Analytics: TimeDoco's marketing pages use Cloudflare Web Analytics; none is added here (the
       CSP would need `static.cloudflareinsights.com`).
 
