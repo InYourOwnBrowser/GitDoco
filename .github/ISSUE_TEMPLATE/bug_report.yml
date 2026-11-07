@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in GitDoco doesn't work or gives a wrong result.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Issues are public: please don't paste a GitHub token, private code, or anything from a private repository.
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Tool
+      options:
+        - Dependencies
+        - Issues
+        - Discussions
+        - Code
+        - Landing page or other
+    validations:
+      required: true
+  - type: input
+    id: repo
+    attributes:
+      label: Repository
+      description: The public repository you loaded, if any (owner/repo or its URL).
+      placeholder: facebook/react
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: activity-log
+    attributes:
+      label: Activity log
+      description: Click "Activity log" at the bottom of the tool and paste its contents. Remove anything private first.
+      render: text
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: Firefox 133 on macOS, Chrome on Android, ...

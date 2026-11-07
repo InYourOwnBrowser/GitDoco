@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<!-- Source of assets/og-image.jpg (1200x630, the image shown when GitDoco is shared). To regenerate:
+     node -e "const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1200,height:630}});await p.goto('file://'+require('path').resolve('scripts/og-image.html'));await p.evaluate(()=>document.fonts.ready);await p.screenshot({path:'assets/og-image.jpg',type:'jpeg',quality:86});await b.close();})()"
+     It uses assets/screenshot-deps.jpg, so retake that first if the tool's look changed. -->
+<style>
+@font-face { font-family: 'Plex'; font-weight: 400; src: url('../fonts/ibm-plex-sans-regular.woff2') format('woff2'); }
+@font-face { font-family: 'Plex'; font-weight: 500; src: url('../fonts/ibm-plex-sans-medium.woff2') format('woff2'); }
+@font-face { font-family: 'Plex'; font-weight: 600; src: url('../fonts/ibm-plex-sans-semibold.woff2') format('woff2'); }
+@font-face { font-family: 'Plex'; font-weight: 700; src: url('../fonts/ibm-plex-sans-bold.woff2') format('woff2'); }
+@font-face { font-family: 'PlexMono'; font-weight: 400; src: url('../fonts/ibm-plex-mono-regular.woff2') format('woff2'); }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1200px; height: 630px; overflow: hidden; }
+body {
+  font-family: 'Plex', sans-serif; color: #E6E9E4; position: relative;
+  background: radial-gradient(900px 520px at 88% 30%, rgba(217,165,74,0.16), transparent 60%),
+              radial-gradient(700px 500px at 0% 100%, rgba(62,115,104,0.22), transparent 60%), #10161C;
+}
+.left { position: absolute; left: 64px; top: 56px; width: 560px; }
+.brand { display: flex; align-items: center; gap: 14px; font-size: 34px; font-weight: 700; letter-spacing: -0.01em; }
+.brand img { width: 52px; height: 52px; }
+.brand .accent { color: #D9A54A; }
+h1 { margin-top: 34px; font-size: 50px; line-height: 1.08; font-weight: 700; letter-spacing: -0.02em; color: #F4F5F2; }
+h1 em { font-style: normal; color: #D9A54A; }
+ul { list-style: none; padding: 0; margin-top: 30px; display: grid; gap: 12px; }
+li { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 500; color: #CDD3D7; }
+li::before { content: ''; flex: none; width: 10px; height: 10px; border-radius: 50%; background: #3E9E8A; box-shadow: 0 0 0 4px rgba(62,158,138,0.2); }
+.foot { position: absolute; left: 64px; bottom: 44px; display: flex; gap: 18px; align-items: center; font-size: 19px; color: #A9B2B9; }
+.foot .url { font-family: 'PlexMono', monospace; color: #E6E9E4; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); padding: 6px 12px; border-radius: 8px; }
+.shot { position: absolute; left: 668px; top: 118px; width: 600px; height: 374px; border-radius: 12px; overflow: hidden; background: #fff;
+  box-shadow: 0 30px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.12); }
+.shot img { display: block; width: 980px; margin-top: -198px; margin-left: -6px; }
+</style></head>
+<body>
+  <div class="left">
+    <div class="brand"><img src="../favicon.svg" alt=""><span>Git<span class="accent">Doco</span></span></div>
+    <h1>Check any GitHub repo's <em>licenses and security</em>, and triage its issues with your AI.</h1>
+    <ul>
+      <li>License policy, advisories, SBOM</li>
+      <li>What a pull request adds</li>
+      <li>Issue topics and duplicates</li>
+    </ul>
+  </div>
+  <div class="shot"><img src="../assets/screenshot-deps.jpg" alt=""></div>
+  <div class="foot"><span class="url">gitdoco.timedoco.com</span><span>Free · No account · Runs in your browser</span></div>
+</body></html>

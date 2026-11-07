@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://api.deps.dev; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="referrer" content="no-referrer">
+    <title>Issues: triage GitHub issues and pull requests with your AI · GitDoco</title>
+    <meta name="description" content="Filter a repo&#x27;s issues and pull requests, find topic clusters and near-duplicates, and copy the threads without bot noise for Claude, ChatGPT or Gemini. Runs in your browser.">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/issues.css">
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Top Header Bar -->
+    <header class="header-bar">
+        <div class="brand-With-Switcher">
+            <a class="brand-group brand-home" href="index.html" title="GitDoco home">
+                <img src="favicon.svg" width="24" height="24" alt="">
+                <span class="brand-title">Git<span class="brand-accent">Doco</span></span>
+            </a>
+
+            <nav class="page-tabs" aria-label="Tools"><a id="tabDepsLink" href="deps.html">Dependencies</a><a id="tabIssuesLink" href="issues.html" class="active" aria-current="page">Issues</a><a id="tabDiscussionsLink" href="discussions.html">Discussions</a><a id="tabCodeLink" href="code.html">Code</a></nav>
+            <nav class="mode-switcher" aria-label="Tool mode" style="display: none;">
+                <a href="code.html" id="switchToCodeLink" class="mode-tab">Code Packer</a>
+                <a href="issues.html" class="mode-tab active" aria-current="page">Issues Explorer</a>
+            </nav>
+        </div>
+
+        <nav class="step-indicator" aria-label="Progress steps">
+            <span id="step1" class="step-item active">1. Load</span>
+            <span class="step-chevron" aria-hidden="true">&rsaquo;</span>
+            <span id="step2" class="step-item">2. Select</span>
+            <span class="step-chevron" aria-hidden="true">&rsaquo;</span>
+            <span id="step3" class="step-item">3. Copy</span>
+        </nav>
+
+        <div class="header-controls">
+            <div id="rateBadge" class="rate-badge" title="GitHub API Rate Limit Quota" style="display: none;">
+                <b id="quotaVal" class="rate-normal" style="display:none;">-- / --</b>
+                <span id="quotaRemainingText">12 requests left, resets <span id="resetVal">--:--</span></span>
+            </div>
+
+            <button id="themeToggleBtn" class="secondary btn-sm" aria-label="Toggle dark/light theme" title="Toggle theme">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+
+            <button id="shareUrlBtn" class="secondary btn-sm" title="Copy a link to this page with the repo and your settings (never your token)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+                <span>Share link</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Persistent Warning Banner -->
+    <div id="persistentWarningBanner" class="persistent-warning-banner" role="alert">
+        <div class="persistent-warning-content">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex-shrink: 0;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span id="warningBannerText">Output context may be incomplete.</span>
+        </div>
+        <div class="persistent-warning-actions">
+            <button type="button" id="warningBannerTokenBtn" class="secondary btn-xs" style="display: none;">Add token</button>
+            <button type="button" id="warningBannerRetryBtn" class="primary btn-xs" style="display: none;">Retry</button>
+            <button type="button" id="warningBannerDismissBtn" class="secondary btn-xs" aria-label="Dismiss warning">&times;</button>
+        </div>
+    </div>
+
+    <!-- First Screen Hero -->
+    <section id="heroBlock" class="hero-block">
+        <h2>Turn a repo's issues and pull requests into one file for your AI</h2>
+        <p>Paste a repo, filter and pick the threads to include, copy the result. Bot noise and "+1"s are stripped out. Runs in your browser.</p>
+        <p class="hero-zip-hint">Public repos work without a token. For a private repo, or if you reach GitHub's limit of 60 requests an hour, <button type="button" class="link-btn" data-show-token>add a GitHub token</button> (kept only in this tab, never saved).</p>
+        <div id="exampleRepos" class="example-repos">
+            <span>Try:</span>
+            <button type="button" data-repo="anthropics/claude-code">anthropics/claude-code</button>
+            <button type="button" data-repo="facebook/react">facebook/react</button>
+            <button type="button" data-repo="astral-sh/ruff">astral-sh/ruff</button>
+        </div>
+    </section>
+
+    <!-- Source Input Bar -->
+    <section class="source-bar">
+        <form id="sourceForm" class="source-form">
+            <div class="repo-input-wrapper">
+                <label for="repoUrl" style="font-size: 0.8125rem; font-weight: 600; color: var(--ink);">GitHub repository</label>
+                <div class="input-row">
+                    <input type="text" id="repoUrl" placeholder="owner/repo or https://github.com/owner/repo" value="">
+                    <button id="loadIssuesBtn" type="button" class="primary">Load issues</button>
+                    <button id="abortBtn" type="button" class="danger" style="display: none;">Cancel</button>
+                    <button id="optionsToggleBtn" type="button" class="options-toggle-btn secondary-control" aria-expanded="false" aria-controls="optionsDrawer">
+                        <span id="optionsToggleSummary">Settings: Claude XML · secrets hidden</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                </div>
+                <div id="tokenPanel" class="token-panel" hidden>
+                    <p id="tokenPanelMessage" class="token-panel-message"></p>
+                    <label for="pat">GitHub token</label>
+                    <input type="password" id="pat" placeholder="ghp_... (Optional)" autocomplete="off">
+                    <p class="field-helper">GitHub allows 60 requests per hour without a token. A token raises that to 5,000 and is needed for private repos. It is only sent to GitHub and is never stored.</p>
+                </div>
+                <div id="repoInputError" class="inline-error">Enter a repo as owner/name or a GitHub URL.</div>
+            </div>
+
+            <div id="branchTokenGroup" class="branch-token-group secondary-control"></div>
+        </form>
+    </section>
+
+    <!-- Target Bar -->
+    <div id="targetBar" class="target-bar" role="group" aria-label="Send to">
+        <span class="target-bar-label">Send to:</span>
+        <button type="button" data-target="claude" aria-pressed="true">Claude</button>
+        <button type="button" data-target="chatgpt" aria-pressed="false">ChatGPT</button>
+        <button type="button" data-target="gemini" aria-pressed="false">Gemini</button>
+        <button type="button" data-target="custom" aria-pressed="false">Custom</button>
+    </div>
+
+    <!-- Collapsible Settings Drawer -->
+    <div id="optionsDrawer" class="options-drawer">
+        <div class="option-field full-width" style="margin-bottom: 0.25rem;">
+            <a href="#" id="drawerTokenLink" class="drawer-token-link" style="font-size: 0.8125rem; color: var(--cobalt); text-decoration: underline;">Add a GitHub token</a>
+        </div>
+        <div class="option-field">
+            <label for="maxIssuesLimit">How many issues to scan</label>
+            <select id="maxIssuesLimit" style="max-width: 130px;">
+                <option value="100">Latest 100</option>
+                <option value="300" selected>Latest 300</option>
+                <option value="500">Latest 500</option>
+                <option value="1000">Latest 1,000</option>
+            </select>
+        </div>
+        <div class="option-field">
+            <label for="includePrs">Show</label>
+            <select id="includePrs" style="max-width: 140px;">
+                <option value="issues" selected>Issues only</option>
+                <option value="prs">Pull Requests only</option>
+                <option value="both">Issues &amp; PRs</option>
+            </select>
+        </div>
+        <div class="option-field" id="formatField">
+            <label for="format">Output format</label>
+            <select id="format">
+                <option value="claude-xml">Anthropic Claude XML</option>
+                <option value="markdown">Markdown Threads</option>
+                <option value="generic-xml">Generic XML (CDATA)</option>
+                <option value="json">Structured JSON</option>
+            </select>
+        </div>
+
+        <div class="option-field" hidden>
+            <label for="commentScope">Comment inclusion</label>
+            <select id="commentScope">
+                <option value="all" selected>All human comments</option>
+                <option value="maintainers">Maintainers &amp; Author only</option>
+                <option value="none">Issue bodies only (Fastest, 0 extra API calls)</option>
+            </select>
+        </div>
+
+        <div class="option-field" id="chunkLimitField">
+            <label for="chunkLimit">Split into parts of up to N tokens (0 = don't split)</label>
+            <input type="number" id="chunkLimit" value="0" min="0" step="10000" placeholder="0 = Auto / single file">
+        </div>
+
+        <div class="option-field">
+            <label for="redactLevel">Hide secrets</label>
+            <select id="redactLevel">
+                <option value="off">Off</option>
+                <option value="standard">Standard</option>
+                <option value="strict" selected>Strict</option>
+            </select>
+            <!-- Preserved hidden inputs for backward compatibility -->
+            <input type="checkbox" id="redactSecrets" checked hidden style="display: none;">
+            <input type="checkbox" id="aggressiveRedact" checked hidden style="display: none;">
+        </div>
+
+        <!-- Content Group -->
+        <div class="settings-group-header full-width">
+            <span>Content</span>
+        </div>
+
+        <div class="option-field">
+            <label for="maxLogLines">Truncate logs over (lines)</label>
+            <input type="number" id="maxLogLines" value="40" min="0" max="500" title="0 = Do not truncate">
+        </div>
+
+        <div class="option-field">
+            <label class="checkbox-label"><input type="checkbox" id="stripImages" aria-label="Strip images and videos" checked> <span>Strip images and videos</span></label>
+            <label class="checkbox-label"><input type="checkbox" id="filterBots" aria-label="Hide bot comments" checked> <span>Hide bot comments</span></label>
+        </div>
+
+        <div class="option-field">
+            <label class="checkbox-label"><input type="checkbox" id="filterNoise" aria-label="Hide low-signal comments" checked> <span>Hide low-signal comments ("+1", "me too")</span></label>
+            <label class="checkbox-label"><input type="checkbox" id="stripTemplates" aria-label="Strip issue templates and boilerplate" checked> <span>Strip issue templates and boilerplate</span></label>
+        </div>
+
+        <div class="option-field">
+            <label class="checkbox-label"><input type="checkbox" id="includeNlpSummary" aria-label="Include topic clusters and recurring phrases" checked> <span>Include topic clusters &amp; recurring phrases</span></label>
+        </div>
+
+        <div class="option-field full-width">
+            <div class="field-label-row">
+                <label for="aiInstructions">Instructions for the AI (optional)</label>
+                <span id="instructionsCharCount" class="char-count">0 chars</span>
+            </div>
+            <textarea id="aiInstructions" rows="2" placeholder="e.g. Identify the root cause of these bug reports and propose a fix..."></textarea>
+            <div class="instructions-toolbar">
+                <div class="preset-buttons">
+                    <span class="preset-label">Presets:</span>
+                    <button type="button" class="preset-btn btn-xs" data-instruction="Synthesize the top user pain points, recurring bugs, and feature requests from these issues.">Triage &amp; Pain Points</button>
+                    <button type="button" class="preset-btn btn-xs" data-instruction="Analyze these bug reports, identify likely shared root causes, and suggest debugging steps.">Root Cause Analysis</button>
+                    <button type="button" class="preset-btn btn-xs" data-instruction="Identify duplicate issues, overlapping discussions, and draft a release roadmap.">Find Duplicates &amp; Roadmap</button>
+                </div>
+                <button type="button" id="clearInstructionsBtn" class="secondary btn-xs">Clear</button>
+            </div>
+        </div>
+
+        <div class="option-field full-width">
+            <button type="button" id="drawerDoneBtn" class="primary btn-full drawer-done-btn" style="display: none;">Done</button>
+        </div>
+    </div>
+
+    <!-- Collapsible NLP Insights & Topic Modeling Bar -->
+    <section id="nlpBanner" class="nlp-banner" style="display: none;" aria-label="NLP Topic Modeling and N-Grams">
+        <div class="nlp-header">
+            <div class="nlp-title-group">
+                <span class="nlp-title">Topics in these issues</span>
+                <span id="nlpMetaBadge" class="char-count">Analyzed 0 issues</span>
+            </div>
+            <div class="nlp-actions">
+                <button type="button" id="clearNlpFilterBtn" class="secondary btn-xs" style="display: none;">Clear topic filter</button>
+                <button type="button" id="selectActiveTopicBtn" class="primary btn-xs" style="display: none;">Select these</button>
+                <button type="button" id="toggleNlpCollapseBtn" class="secondary btn-xs">Hide topics</button>
+            </div>
+        </div>
+
+        <form id="customTopicForm" class="custom-topic-form" role="search">
+            <label for="customTopicInput" class="nlp-section-label">Your own topic</label>
+            <input type="search" id="customTopicInput" placeholder='e.g. memory leak, or an exact "phrase"' autocomplete="off">
+            <button type="submit" class="secondary btn-xs">Find</button>
+            <span id="customTopicHint" class="field-helper custom-topic-hint">Finds issues that mention every word, plus related ones that discuss the same thing in other words.</span>
+        </form>
+
+        <div id="nlpBody" class="nlp-body">
+            <div class="nlp-column">
+                <div class="nlp-section-label">Click a topic to filter</div>
+                <div id="topicClustersContainer" class="pill-container"></div>
+            </div>
+            <div class="nlp-column">
+                <details>
+                    <summary class="nlp-section-label" style="cursor: pointer;">Common phrases</summary>
+                    <div id="ngramsContainer" class="pill-container" style="margin-top: 0.35rem;"></div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- Budget Meter Banner -->
+    <section id="budgetBanner" class="budget-banner workspace-section" aria-label="Context Budget Meter">
+        <div class="budget-header">
+            <div class="budget-numbers">
+                <span id="statTokens" class="budget-hero-number">0</span>
+                <span id="targetBudgetDisplay" class="budget-target-label">of 200,000 estimated tokens</span>
+            </div>
+
+            <div class="budget-presets">
+                <span style="font-size: 0.8125rem; color: var(--ink-soft); margin-right: 0.25rem;">Target budget:</span>
+                <button type="button" class="preset-btn" data-preset="100000">100k</button>
+                <button type="button" class="preset-btn" data-preset="200000">200k</button>
+                <button type="button" class="preset-btn" data-preset="1000000">1M</button>
+            </div>
+        </div>
+
+        <div class="budget-track">
+            <div id="budgetFill" class="budget-fill fits"></div>
+        </div>
+
+        <div class="budget-status-row">
+            <span id="budgetStatusText" class="budget-status-text status-fits">Fits context window</span>
+            <div style="font-family: var(--font-mono); font-size: 0.78125rem;">
+                <span>Parts: <b id="statChunks">0</b></span>
+                <span style="margin-left: 0.75rem;">Issues: <b id="statIssues">0</b></span>
+                <span style="margin-left: 0.75rem;">Comments: <b id="statComments">0</b></span>
+                <span style="margin-left: 0.75rem;">Chars: <b id="statChars">0</b></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mobile Segmented Control -->
+    <div class="segmented-control" role="tablist">
+        <button id="tabIssuesBtn" class="segmented-btn active" role="tab" aria-selected="true" aria-controls="issuesCard">Issues</button>
+        <button id="tabOutputBtn" class="segmented-btn" role="tab" aria-selected="false" aria-controls="outputCard">Output</button>
+    </div>
+
+    <!-- Main Workspace Panes (Issues List | Output) -->
+    <main id="workspacePanes" class="workspace-panes workspace-section">
+        <!-- Left Pane: Issues Explorer & Filters -->
+        <section class="pane active-mobile" id="issuesCard" role="tabpanel" aria-labelledby="tabIssuesBtn">
+            <div class="pane-header">
+                <span class="pane-title">Issues</span>
+                <span id="selectedTokensBadge" class="badge" style="font-family: var(--font-mono); font-size: 0.78125rem; color: var(--ink-soft);">0 selected (~0 estimated body tokens)</span>
+            </div>
+
+            <!-- Multi-dimensional Filter Controls -->
+            <div class="issues-filter-panel">
+                <div class="tree-search-bar" style="padding: 0; border: none;">
+                    <div class="search-input-wrapper">
+                        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="issueSearchInput" aria-label="Search issues" placeholder="Search title, body, #number, author...">
+                    </div>
+                    <span id="searchMatchCount" class="search-count" aria-live="polite"></span>
+                </div>
+
+                <div class="filter-controls-grid">
+                    <select id="stateFilter" aria-label="Filter by issue state">
+                        <option value="all">State: All</option>
+                        <option value="open">State: Open only</option>
+                        <option value="closed">State: Closed (All)</option>
+                        <option value="completed">Closed: Completed</option>
+                        <option value="not_planned">Closed: Not Planned</option>
+                    </select>
+
+                    <select id="labelFilter" aria-label="Filter by label">
+                        <option value="">Label: All labels</option>
+                    </select>
+                </div>
+
+                <details id="moreFilters" class="more-filters-details">
+                    <summary>More filters</summary>
+                    <div class="more-filters-content">
+                        <div class="filter-controls-grid" style="margin-top: 0.4rem;">
+                            <select id="sortFilter" aria-label="Sort issues">
+                                <option value="newest">Sort: Newest first</option>
+                                <option value="oldest">Sort: Oldest first</option>
+                                <option value="updated">Sort: Recently updated</option>
+                                <option value="comments">Sort: Most comments</option>
+                                <option value="reactions">Sort: Most reactions (👍)</option>
+                            </select>
+                        </div>
+                        <div class="filter-dates-row" style="margin-top: 0.4rem;">
+                            <label for="dateFromFilter">Created from</label>
+                            <input type="date" id="dateFromFilter" aria-label="Created from date">
+                            <label for="dateToFilter">to</label>
+                            <input type="date" id="dateToFilter" aria-label="Created to date">
+                            <label for="minCommentsFilter" title="Minimum comments"><span style="color:var(--ink-soft);">Min 💬</span></label>
+                            <input type="number" id="minCommentsFilter" aria-label="Minimum comments count" value="0" min="0" max="500" style="width:52px;">
+                        </div>
+                        <div class="more-filters-actions" style="margin-top: 0.5rem; display: flex; gap: 0.4rem;">
+                            <button id="selectLinkedBtn" type="button" class="secondary btn-xs" title="Select issues referenced via #number in currently selected issues">Select linked (#refs)</button>
+                            <button id="exportNlpOnlyBtn" type="button" class="secondary btn-xs" title="Build an LLM summary of topics and issue counts without fetching full threads">Summary only</button>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Selection Toolbar -->
+            <div class="tree-toolbar">
+                <button id="selectAllVisibleBtn" class="secondary btn-xs">Select visible</button>
+                <button id="deselectAllBtn" class="secondary btn-xs">Deselect all</button>
+            </div>
+
+            <!-- Issue Rows Viewport -->
+            <div class="tree-viewport" id="issuesViewport">
+                <div id="issuesEmptyState" class="empty-state">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p id="issuesEmptyText">Load a repository to explore, cluster, and pack its GitHub issues.</p>
+                </div>
+                <ul class="issues-list" id="issuesListContainer" style="display: none;"></ul>
+            </div>
+
+            <div class="pane-footer">
+                <div id="commentScopeBar" class="segmented-inline" role="group" aria-label="Comments to include">
+                    <button type="button" data-scope="none" aria-pressed="false">Issue only</button>
+                    <button type="button" data-scope="maintainers" aria-pressed="false">Maintainer replies</button>
+                    <button type="button" data-scope="all" aria-pressed="true">Full discussion</button>
+                </div>
+                <p id="commentCostHint" class="field-helper"></p>
+                <p id="selectionSummary"></p>
+                <p id="hiddenSelectedNote" class="field-helper"></p>
+                <button id="buildContextBtn" class="primary btn-full"><span>Build context</span></button>
+            </div>
+        </section>
+
+        <!-- Right Pane: Output & Secrets Warning -->
+        <section class="pane" id="outputCard" role="tabpanel" aria-labelledby="tabOutputBtn">
+            <div class="pane-header">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="pane-title">Output</span>
+                    <label for="chunkSelect" id="chunkSelectLabel" style="display:none; font-size: 0.8125rem;">Part:</label>
+                    <select id="chunkSelect" style="display:none; padding: 0.2rem 0.4rem; font-size: 0.8125rem; font-family: var(--font-mono);"></select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                    <button id="copyBtn" class="primary btn-sm" disabled>Copy</button>
+                    <button id="nextPartBtn" class="secondary btn-sm" style="display:none;" title="Advance to next part">Next part</button>
+                    <button id="downloadBtn" class="secondary btn-sm" disabled title="Save the output as a file">Download</button>
+                    <button id="downloadAllBtn" class="secondary btn-sm" style="display:none;">Download all parts</button>
+                </div>
+            </div>
+
+            <div class="output-viewport">
+                <div id="warningBanner" class="warning-banner" role="status" aria-live="polite" style="display:none"></div>
+                <div id="summaryCard" class="summary-card" hidden></div>
+
+                <!-- Secrets Warning Panel -->
+                <div id="secretsWarningPanel" class="secrets-warning-panel" role="status" aria-live="polite" style="display: none;">
+                    <div class="secrets-warning-header">
+                        <div class="secrets-warning-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span id="secretsWarningSummary">0 possible secrets in 0 issues.</span>
+                        </div>
+                        <button type="button" id="excludeAllSecretsBtn" class="danger btn-xs">Deselect flagged issues</button>
+                    </div>
+                    <div class="secrets-list-wrapper">
+                        <table class="secrets-table">
+                            <thead>
+                                <tr>
+                                    <th>Issue</th>
+                                    <th>Type</th>
+                                    <th>Location</th>
+                                    <th>Preview</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="secretsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="previewNotice" class="preview-notice" style="display: none;">
+                    Preview shows the first 45,000 characters. Copy and Download include everything.
+                </div>
+
+                <div id="outputEmptyState" class="empty-state">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <p>Select issues on the left and click "Build context".</p>
+                </div>
+                <div class="preview-toolbar">
+                    <button id="togglePreviewBtn" type="button" class="secondary btn-sm" aria-expanded="false" style="display: none;">Show preview</button>
+                    <button id="wrapToggleBtn" type="button" class="secondary btn-sm toggle-btn" aria-pressed="true" title="Wrap long lines in the preview (the copied text is not changed)">Wrap lines</button>
+                </div>
+                <textarea id="previewArea" class="preview wrap" readonly style="display: none;"></textarea>
+            </div>
+        </section>
+    </main>
+
+    <!-- Terminal Activity Log -->
+    <section id="logCard" class="log-card workspace-section">
+        <div id="logHeader" class="log-header">
+            <span id="logSummary" class="log-summary-text" role="status" aria-live="polite">Ready</span>
+            <span class="log-actions"><a class="feedback-link" href="https://github.com/InYourOwnBrowser/GitDoco/issues/new?template=bug_report.yml&amp;tool=Issues" target="_blank" rel="noopener noreferrer" title="Opens a GitHub issue form. Nothing is sent from GitDoco.">Report a problem</a><button id="logToggleBtn" class="secondary btn-xs" type="button" aria-expanded="false" aria-controls="log" title="Show every step and request">Activity log</button></span>
+        </div>
+        <div class="progress-track" id="progressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="log"></div>
+    </section>
+
+    <!-- Mobile Sticky Action Bar -->
+    <div id="stickyActionBar" class="sticky-action-bar">
+        <button id="mobilePrimaryBtn" class="primary btn-full">Load issues</button>
+    </div>
+
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+</div>
+
+<script type="module" src="js/issues-app.js"></script>
+</body>
+</html>
