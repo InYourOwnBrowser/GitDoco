@@ -1,0 +1,29 @@
+name: Feature idea
+description: Suggest something GitDoco should do, or do better.
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Tool
+      options:
+        - Dependencies
+        - Issues
+        - Discussions
+        - Code
+        - Something new
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or question you have, rather than the feature you imagine. It helps find the best fix.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How GitDoco could help. Screenshots or examples are welcome.
