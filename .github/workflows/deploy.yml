@@ -72,6 +72,18 @@ jobs:
         with:
           name: verified-dist
           path: dist
+      - name: Create the Pages project if it does not exist yet
+        # Creating a Direct Upload project in the Cloudflare dashboard can end up
+        # as a Worker instead of a Pages project, so the workflow creates it. If
+        # the project already exists this step fails harmlessly and the deploy
+        # below proceeds; a genuine problem (bad token, wrong account) then shows
+        # up there.
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create gitdoco --production-branch=main
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
