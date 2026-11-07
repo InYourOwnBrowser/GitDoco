@@ -8,7 +8,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT = path.join(ROOT, 'dist');
-const FILES = ['index.html', 'privacy.html', 'terms.html', '404.html', 'LICENSE', 'code.html', 'issues.html', 'discussions.html', 'deps.html', 'favicon.svg', 'robots.txt', 'sitemap.xml', '_headers'];
+const FILES = ['index.html', 'privacy.html', 'terms.html', '404.html', 'LICENSE', 'NOTICE', 'code.html', 'issues.html', 'discussions.html', 'deps.html', 'favicon.svg', 'robots.txt', 'sitemap.xml', '_headers'];
 const DIRS = ['css', 'js', 'fonts', 'assets'];
 
 fs.rmSync(OUT, { recursive: true, force: true });
