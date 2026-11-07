@@ -1,0 +1,53 @@
+/* TimeDoco ticker (js/promo-banner.js). One neutral dark strip that reads the same in light and dark themes. */
+:root { --promo-h: 36px; }
+
+.promo {
+    position: relative; z-index: 30;
+    display: flex; align-items: center;
+    height: var(--promo-h);
+    background: #111827; color: #f3f4f6;
+    font-size: 13px; line-height: 1;
+}
+.promo-viewport {
+    flex: 1; min-width: 0; overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+}
+.promo-track {
+    display: flex; width: max-content;
+    animation: promo-scroll var(--promo-duration, 60s) linear infinite;
+}
+.promo-group { display: flex; flex: none; }
+.promo-item {
+    flex: none; white-space: nowrap;
+    padding: 0 3.5rem 0 0;
+    color: inherit; text-decoration: none;
+}
+.promo-item:hover, .promo-item:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.promo-item:focus-visible { outline: 2px solid #fbbf24; outline-offset: 2px; }
+.promo:hover .promo-track, .promo:focus-within .promo-track { animation-play-state: paused; }
+
+.promo-close {
+    flex: none; width: var(--promo-h); height: var(--promo-h);
+    border: 0; background: transparent; color: inherit; cursor: pointer;
+    font: inherit; font-size: 20px; line-height: 1;
+}
+.promo-close:hover { background: rgba(255, 255, 255, 0.12); }
+.promo-close:focus-visible { outline: 2px solid #fbbf24; outline-offset: -2px; }
+
+@keyframes promo-scroll { to { transform: translateX(-50%); } }
+
+/* No motion: show the message once, still, and let it truncate on small screens. */
+@media (prefers-reduced-motion: reduce) {
+    .promo-track { animation: none; width: auto; max-width: 100%; }
+    .promo-group:nth-child(n+2), .promo-group .promo-item:nth-child(n+2) { display: none; }
+    .promo-group:first-child { min-width: 0; }
+    .promo-item { overflow: hidden; text-overflow: ellipsis; padding: 0 0.75rem 0 1rem; }
+    .promo-viewport { -webkit-mask-image: none; mask-image: none; }
+}
+
+/* The tool pages size their panes to the viewport; take the bar's height out of that. */
+.has-promo .app-container { min-height: calc(100dvh - var(--promo-h)); }
+@media (min-width: 1100px) {
+    .has-promo .workspace-panes { height: calc(100dvh - var(--header-h) - var(--status-h) - var(--promo-h)); }
+}

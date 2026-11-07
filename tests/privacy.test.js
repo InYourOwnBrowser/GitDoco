@@ -102,3 +102,13 @@ test('opening a page contacts nothing: GitHub is only called after the user acts
         }
     }
 });
+
+test('the TimeDoco banner makes no requests, is remembered under a clearable key, and is on the seven main pages', () => {
+    const js = read('js/promo-banner.js');
+    assert.doesNotMatch(js, /fetch\(|XMLHttpRequest|new Image|createElement\(['"](script|img|iframe)/, 'promo banner must not load anything');
+    assert.match(js, /'cfg_promo_timedoco_closed'/);
+    for (const page of ['index', 'privacy', 'terms', 'code', 'issues', 'discussions', 'deps']) {
+        assert.match(read(`${page}.html`), /<script src="js\/promo-banner\.js"><\/script>/, `${page}: banner script`);
+        assert.match(read(`${page}.html`), /css\/promo-banner\.css/, `${page}: banner css`);
+    }
+});
