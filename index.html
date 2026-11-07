@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
     <title>GitDoco: check a GitHub repo's dependencies and triage its issues with your AI</title>
-    <meta name="description" content="Check any GitHub repository's dependency licenses and security advisories, triage its issues and discussions, or pack its code into one file for Claude, ChatGPT or Gemini. Free, no account, runs entirely in your browser.">
+    <meta name="description" content="Check any GitHub repository's dependency licenses and security advisories, triage its issues and discussions, or pack its code into one file for Claude, ChatGPT or Gemini. Free, no account, runs in your browser.">
     <link rel="canonical" href="https://gitdoco.timedoco.com/">
     <meta name="theme-color" content="#10161C">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -48,7 +48,7 @@
         <div class="hero-text">
             <div class="pill"><span class="dot" aria-hidden="true"></span> No install. No account. In your browser.</div>
             <h1>Check any GitHub repo's licenses and security, and triage its issues with your AI.</h1>
-            <p class="lead">Paste a repository. GitDoco checks its dependencies' licenses and known security advisories, turns its issues and discussions into a clean, clustered brief, or packs its code into one file, ready for Claude, ChatGPT or Gemini. Free, and nothing is uploaded.</p>
+            <p class="lead">Paste a repository. GitDoco checks its dependencies' licenses and known security advisories, turns its issues and discussions into a clean, clustered brief, or packs its code into one file, ready for Claude, ChatGPT or Gemini. Free, and GitDoco has no server to upload to.</p>
 
             <form id="quickStart" class="quick-start" autocomplete="off">
                 <label for="quickRepo">Try it with a repository</label>
@@ -154,11 +154,11 @@
     </section>
 
     <section id="privacy" class="wrap section privacy">
-        <h2>Private by design</h2>
+        <h2>Built to keep your data in your browser</h2>
         <div class="privacy-grid">
-            <div><h3>Runs in your browser</h3><p>There is no GitDoco server. Your browser talks to GitHub directly, and nothing is uploaded anywhere else.</p></div>
+            <div><h3>Runs in your browser</h3><p>There is no GitDoco server. Your browser talks directly to GitHub, and to deps.dev for the Dependencies tool.</p></div>
             <div><h3>Token stays in memory</h3><p>Your GitHub token is only sent to GitHub, never saved, and gone when you close the tab.</p></div>
-            <div><h3>Secrets hidden</h3><p>API keys, tokens, private keys and <code>.env</code> files are detected and replaced before you copy anything.</p></div>
+            <div><h3>Secrets hidden, best effort</h3><p>Known API key and token formats, private keys and <code>.env</code> files are detected and replaced before you copy anything. It cannot catch everything, so review the output.</p></div>
             <div><h3>Clear about the rest</h3><p>The Dependencies tool sends package names and versions to deps.dev to look up licenses. Nothing else leaves your browser.</p></div>
         </div>
         <p class="note">Repository content is untrusted input to your AI: code, issues and comments can contain text written to steer it. Review the output before using it for sensitive work. <a href="privacy.html">Read the full privacy notice</a>.</p>
@@ -177,7 +177,7 @@
 
     <section class="wrap section about">
         <h2>About</h2>
-        <p>GitDoco is part of <strong>In Your Own Browser</strong>: small, privacy-first tools that run entirely on your device. If you track time for clients, try its sibling <a href="https://timedoco.com/" target="_blank" rel="noopener noreferrer">TimeDoco</a>. Feedback, bug reports and ideas are very welcome on <a href="https://github.com/InYourOwnBrowser/GitDoco" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
+        <p>GitDoco is part of <strong>In Your Own Browser</strong>: small, privacy-first tools that run in your browser. If you track time for clients, try its sibling <a href="https://timedoco.com/" target="_blank" rel="noopener noreferrer">TimeDoco</a>. Feedback, bug reports and ideas are very welcome on <a href="https://github.com/InYourOwnBrowser/GitDoco" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
         <a class="btn btn-signal" href="deps.html">Open GitDoco</a>
     </section>
 </main>
@@ -200,6 +200,7 @@
             </a>
         </nav>
     </div>
+    <p class="wrap footer-note">GitDoco is an independent project. It is not affiliated with, endorsed by or sponsored by GitHub, Anthropic, OpenAI, Google or deps.dev. Claude, ChatGPT, Gemini and GitHub are trademarks of their respective owners.</p>
 </footer>
 
 <script type="module" src="js/landing.js"></script>
