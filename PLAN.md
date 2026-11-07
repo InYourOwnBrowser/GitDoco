@@ -321,6 +321,10 @@ findings, and SPDX (tag-value or JSON) as a second SBOM format.
       commit, and a self-contained interactive HTML page for GitHub Pages (inlined engine and data,
       CSP `default-src 'none'` with a hashed script).
 - [ ] Possible later: a GitHub Action that regenerates the SVG on each push.
+- [x] Issues and Discussions map: threads linked by `#references` and similar wording, coloured by
+      topic (same-named topics merged), deterministic force layout, select a thread or its group.
+- [ ] Next candidates: a phrase map (common phrases linked by the threads they share; needs more
+      than the current 14 phrases and merging of overlapping ones) and a topic timeline.
 
 ## Hosting and repository move
 

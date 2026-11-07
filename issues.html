@@ -10,6 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/issues.css">
+    <link rel="stylesheet" href="css/dep-graph.css">
     <link rel="stylesheet" href="css/promo-banner.css">
 </head>
 <body>
@@ -317,6 +318,7 @@
         <section class="pane active-mobile" id="issuesCard" role="tabpanel" aria-labelledby="tabIssuesBtn">
             <div class="pane-header">
                 <span class="pane-title">Issues</span>
+                <button type="button" id="mapBtn" class="secondary btn-xs" disabled title="A map of how the loaded issues link to each other: #references and similar wording, coloured by topic">Map</button>
                 <span id="selectedTokensBadge" class="badge" style="font-family: var(--font-mono); font-size: 0.78125rem; color: var(--ink-soft);">0 selected (~0 estimated body tokens)</span>
             </div>
 
@@ -496,6 +498,14 @@
 
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 </div>
+
+<dialog id="mapDialog" class="graph-dialog" aria-labelledby="mapDialogTitle">
+    <div class="graph-dialog-head">
+        <h2 id="mapDialogTitle">Issues map</h2>
+        <button type="button" id="mapCloseBtn" class="secondary btn-sm">Close</button>
+    </div>
+    <div id="mapMount" class="graph-mount"></div>
+</dialog>
 
 <script type="module" src="js/issues-app.js"></script>
 </body>

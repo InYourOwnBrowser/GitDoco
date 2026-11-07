@@ -135,3 +135,21 @@
 @media (max-width: 760px) {
     .graph-dialog { width: 100vw; height: 100dvh; max-width: 100vw; max-height: 100dvh; border-radius: 0; border: 0; }
 }
+
+/* Issue / discussion relationship map (js/issue-graph.js); shares the .dg toolbar, legend and panel. */
+.ig-edge { stroke: var(--dg-soft); stroke-width: 1.2; opacity: 0.55; }
+.ig-sim { stroke-dasharray: 4 3; opacity: 0.45; }
+.ig-node { cursor: pointer; }
+.ig-dot { stroke-width: 2; }
+.ig-closed .ig-dot, .ig-merged .ig-dot, .ig-answered .ig-dot { stroke-width: 2.5; }
+.ig-ring { fill: none; stroke: none; stroke-width: 3; }
+.ig-picked .ig-ring { stroke: #F5B700; }
+.ig-label { fill: var(--dg-soft); font-size: 10px; pointer-events: none; }
+.ig-node:hover .ig-dot, .ig-node.dg-selected .ig-dot { stroke: var(--dg-accent); stroke-width: 3; }
+.dg-match-hit .ig-ring { stroke: rgba(250, 204, 21, 0.9); }
+.dg-dimmed .ig-node:not(.dg-on) { opacity: 0.2; }
+.dg-dimmed .ig-edge { opacity: 0.12; }
+.dg-dimmed .ig-edge.dg-on { opacity: 1; stroke: var(--dg-accent); stroke-width: 2; }
+.ig-swatch-closed { background: transparent; border: 2px solid var(--dg-soft); border-radius: 50%; }
+.ig-swatch-picked { background: transparent; border: 2px solid #F5B700; border-radius: 50%; }
+.dg-details .dg-btn + .dg-btn { margin-left: 0.4rem; }

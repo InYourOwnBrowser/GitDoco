@@ -12,7 +12,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node --test tests/test.js tests/security.test.js tests/privacy.test.js tests/first-use.test.js tests/links-topics.test.js tests/ui.test.js tests/ui-status.test.js tests/ui-actions.test.js tests/zip-loader.test.js tests/e2e/issues-flow.test.mjs tests/e2e/issues-ratelimit.test.mjs tests/e2e/issues-empty.test.mjs tests/e2e/discussions-flow.test.mjs tests/discussions.test.js tests/deps.test.js tests/lockfiles.test.js tests/license-policy.test.js tests/deps-export.test.js tests/deps-report.test.js tests/deps-compare.test.js tests/dep-graph.test.js tests/pagination.test.js tests/repo-route.test.js tests/e2e/deps-flow.test.mjs",
+    "test": "node --test tests/test.js tests/security.test.js tests/privacy.test.js tests/first-use.test.js tests/links-topics.test.js tests/ui.test.js tests/ui-status.test.js tests/ui-actions.test.js tests/zip-loader.test.js tests/e2e/issues-flow.test.mjs tests/e2e/issues-ratelimit.test.mjs tests/e2e/issues-empty.test.mjs tests/e2e/discussions-flow.test.mjs tests/discussions.test.js tests/deps.test.js tests/lockfiles.test.js tests/license-policy.test.js tests/deps-export.test.js tests/deps-report.test.js tests/deps-compare.test.js tests/dep-graph.test.js tests/issue-graph.test.js tests/pagination.test.js tests/repo-route.test.js tests/e2e/deps-flow.test.mjs",
     "build": "node scripts/build-site.mjs"
   },
   "license": "MIT"

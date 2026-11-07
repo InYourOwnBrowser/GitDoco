@@ -7,6 +7,7 @@ import { parseRepoInput, fetchRateLimit, sleep } from './github-api.js';
 import { fetchIssuesManifest, fetchCommentsForIssues } from './github-issues-api.js';
 import { fetchDiscussionsManifest, fetchCommentsForDiscussions, estimateDiscussionCommentCost } from './github-discussions-api.js';
 import { processIssueThread, extractIssueReferences, filterIncludedComments } from './issue-cleaner.js';
+import { toIssueGraphData, mountIssueGraph } from './issue-graph.js';
 import { buildIssuesOutput, chunkIssuesOutput } from './issue-formatters.js';
 import { escapeXml } from './formatters.js';
 import { estimateTokens, estimateTokensAsync } from './tokenizer.js';
@@ -948,6 +949,46 @@ document.addEventListener('keydown', (e) => {
     dom.issueSearchInput.focus();
 });
 
+// ------------------------------------------------------------------ relationship map
+
+const mapEls = {
+    btn: document.getElementById('mapBtn'),
+    dialog: document.getElementById('mapDialog'),
+    title: document.getElementById('mapDialogTitle'),
+    mount: document.getElementById('mapMount'),
+    close: document.getElementById('mapCloseBtn')
+};
+let mapView = null;
+
+function openMap() {
+    if (!allIssues.length || !mapEls.dialog) return;
+    const data = toIssueGraphData({
+        issues: allIssues,
+        clusters: nlpResults.clusters,
+        similarMap: nlpResults.similarMap,
+        // References in comments count too, for the threads whose comments are already loaded.
+        extraTexts: n => (cachedCommentsByIssue.get(n) || []).map(c => c.body || ''),
+        extractRefs: extractIssueReferences
+    });
+    const repo = currentRepoInfo ? `${currentRepoInfo.owner}/${currentRepoInfo.repo}` : '';
+    mapEls.title.textContent = `${W.Noun} map${repo ? `: ${repo}` : ''}${nlpPending ? ' (topics still being found)' : ''}`;
+    if (typeof mapEls.dialog.showModal === 'function') mapEls.dialog.showModal(); else mapEls.dialog.setAttribute('open', '');
+    mapView = mountIssueGraph(mapEls.mount, data, {
+        words: W,
+        isSelected: n => selectedIssueNumbers.has(n),
+        setSelected: (numbers, on) => {
+            for (const n of numbers) { if (on) selectedIssueNumbers.add(n); else selectedIssueNumbers.delete(n); }
+            renderIssuesList();
+        }
+    });
+}
+
+if (mapEls.dialog) {
+    mapEls.btn.addEventListener('click', openMap);
+    mapEls.close.addEventListener('click', () => mapEls.dialog.close());
+    mapEls.dialog.addEventListener('close', () => { if (mapView) { mapView.destroy(); mapView = null; } });
+}
+
 let currentNlpRequestId = 0;
 let nlpPending = false;
 let nlpStatus = 0;
@@ -1153,6 +1194,7 @@ dom.loadIssuesBtn.addEventListener('click', async () => {
 
     currentRepoInfo = repoInfo;
     allIssues = [];
+    if (mapEls.btn) mapEls.btn.disabled = true;
     selectedIssueNumbers.clear();
     cachedCommentsByIssue.clear();
     fetchFailuresMap.clear();
@@ -1244,6 +1286,7 @@ dom.loadIssuesBtn.addEventListener('click', async () => {
         end(loadStatus);
         // Topic clustering runs in a background worker; the status bar says when it is done.
         runNlpAnalysis(allIssues);
+        if (mapEls.btn) mapEls.btn.disabled = allIssues.length === 0;
     } catch (err) {
         if (err.name === 'AbortError') {
             log('[CANCEL] Manifest load cancelled.');
