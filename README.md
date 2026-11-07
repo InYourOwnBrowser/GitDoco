@@ -190,4 +190,4 @@ After the first production deploy, open an `/owner/repo` link once to check the 
 
 ## License
 
-MIT; see [LICENSE](LICENSE). The bundled IBM Plex fonts are under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt)).
+MIT; see [LICENSE](LICENSE). The bundled IBM Plex fonts are under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt)); see [NOTICE](NOTICE). Keep `LICENSE` as the plain MIT text: anything added to it makes GitHub report the license as "Other".

@@ -87,9 +87,11 @@ test('"Clear GitDoco data" covers every key the site stores', () => {
 test('license files exist and are published with the site', () => {
     assert.match(read('LICENSE'), /^MIT License\n\nCopyright \(c\) 2026 In Your Own Browser/);
     assert.match(read('fonts/OFL.txt'), /SIL OPEN FONT LICENSE Version 1\.1/);
-    assert.match(read('LICENSE'), /fonts\/OFL\.txt/);
+    assert.match(read('NOTICE'), /fonts\/OFL\.txt/);
+    // LICENSE stays the plain MIT text: anything appended makes GitHub report the license as "Other".
+    assert.doesNotMatch(read('LICENSE'), /Third-party|OFL|-{10}/);
     const build = read('scripts/build-site.mjs');
-    for (const f of ['privacy.html', 'LICENSE']) assert.ok(build.includes(`'${f}'`), `build copies ${f}`);
+    for (const f of ['privacy.html', 'LICENSE', 'NOTICE']) assert.ok(build.includes(`'${f}'`), `build copies ${f}`);
     assert.ok(build.includes("'fonts'"), 'build copies fonts/ (with OFL.txt)');
 });
 

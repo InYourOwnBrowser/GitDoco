@@ -295,6 +295,12 @@ function renderList() {
     if (state.packages.length === 0) {
         dom.depsEmptyState.style.display = 'flex';
         dom.depsList.style.display = 'none';
+        const text = dom.depsEmptyState.querySelector ? dom.depsEmptyState.querySelector('p') : null;
+        if (text) {
+            text.textContent = state.appState === 'loaded' && !state.directDeps.length
+                ? `${state.repoName || 'This repository'} declares no dependencies in its manifests (${state.manifests.join(', ') || 'none found'}), so there is nothing to check.`
+                : 'Load a repository to list its dependencies and their licenses.';
+        }
         return visible;
     }
     dom.depsEmptyState.style.display = 'none';
@@ -517,6 +523,7 @@ function fillEcosystemFilter() {
 function resetView() {
     hideCopyHint();
     state.packages = [];
+    state.repoLicenseUnrecognised = false;
     state.edges = [];
     if (dom.graphBtn) dom.graphBtn.disabled = true;
     state.maxLookups = DEFAULT_LOOKUPS;
@@ -593,6 +600,8 @@ async function load(source) {
             log(`[FETCH] Reading ${state.repoName} from GitHub...`);
             const info = await fetchRepoInfo(source.owner, source.repo, { pat, signal });
             state.repoLicense = info.license ? classifyLicense(info.license) : null;
+            // GitHub found a license file but could not match it to a known license ("Other").
+            state.repoLicenseUnrecognised = !info.license && Boolean(info.licenseName);
             const compare = parseCompareInput(dom.compareInput.value, source);
             if (compare && compare.error) throw Object.assign(new Error(compare.error), { status: 400 });
             let head = { owner: source.owner, repo: source.repo, ref: info.branch };
@@ -648,7 +657,11 @@ async function load(source) {
         if (treeTruncated) state.warnings.push('GitHub returned a partial file list, so some manifests may be missing.');
         if (skipped > 0) state.warnings.push(`${skipped} more manifest file(s) were found but not read (limit 60).`);
         if (failed.length) state.warnings.push(`${failed.length} manifest file(s) could not be read: ${failed.map(f => f.path).slice(0, 5).join(', ')}.`);
-        dom.repoLicenseText.textContent = state.repoLicense && state.repoLicense.expression ? state.repoLicense.expression : 'not detected';
+        dom.repoLicenseText.textContent = state.repoLicense && state.repoLicense.expression ? state.repoLicense.expression
+            : state.repoLicenseUnrecognised ? 'not recognised' : 'not detected';
+        if (state.repoLicenseUnrecognised) {
+            state.warnings.push('GitHub found a license file but could not identify it (it reports "Other"). That often happens when text is added to a standard license; keep the license file to the exact standard text so tools can recognise it.');
+        }
         log(`[INFO] Found ${manifests.length} manifest(s): ${state.manifests.slice(0, 8).join(', ')}${manifests.length > 8 ? '…' : ''}`);
         if (manifests.every(m => m.path === POLICY_FILE)) {
             showToast(unsupported.length
