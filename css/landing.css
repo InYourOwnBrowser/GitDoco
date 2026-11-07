@@ -219,6 +219,7 @@ h1, h2, h3 { color: var(--heading); line-height: 1.2; margin: 0; }
 /* Footer */
 .site-footer { border-top: 1px solid var(--line); padding: 1.75rem 0; font-size: 0.8125rem; color: var(--muted); }
 .footer-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.footer-note { margin-top: 0.75rem; font-size: 0.75rem; }
 .footer-links { display: flex; gap: 1.25rem; }
 .footer-links a { color: var(--muted); display: inline-flex; }
 .footer-links a:hover { color: var(--heading); }

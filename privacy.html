@@ -32,12 +32,12 @@
 
 <main class="wrap legal">
     <h1>Privacy</h1>
-    <p class="updated">Last updated 6 November 2026</p>
+    <p class="updated">Last updated 7 November 2026</p>
 
-    <p class="summary">GitDoco has no account, no cookies, no analytics and no server of its own. It runs in your browser, which talks directly to the services listed below, only when you use a tool.</p>
+    <p class="summary">GitDoco has no account, sets no cookies, uses no analytics and has no server of its own. It runs in your browser, which talks directly to the services listed below, only when you use a tool.</p>
 
     <h2>1. What GitDoco collects</h2>
-    <p>Nothing. There is no GitDoco server or database, so nothing you load, select, type or copy reaches us. There are no cookies, analytics, tracking pixels, advertising or third-party scripts, and the site loads no fonts, images or scripts from other websites.</p>
+    <p>GitDoco itself collects nothing. There is no GitDoco server or database, so nothing you load, select, type or copy reaches us. GitDoco sets no cookies and uses no analytics, tracking pixels, advertising or third-party scripts, and the site loads no fonts, images or scripts from other websites. The hosting provider's standard request logs are covered in section 5.</p>
 
     <h2>2. Which services your browser contacts</h2>
     <p>When you use a tool, your browser connects directly to these services. Like any website, they receive your IP address and the details of the request. Opening a page contacts neither, except a GitDoco link that names a repository (for example <code>gitdoco.timedoco.com/owner/repo/issues</code>), which starts loading that repository; the notice before your first request still comes first.</p>
@@ -45,7 +45,7 @@
         <li><strong>GitHub</strong> (<code>api.github.com</code>, <code>raw.githubusercontent.com</code>): to read the repository, issues, discussions and files you ask for. If you enter a GitHub token, it is sent only to <code>api.github.com</code>. GitHub's handling of this is covered by the <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub Privacy Statement</a>.</li>
         <li><strong>deps.dev</strong> (<code>api.deps.dev</code>, run by Google), Dependencies tool only: the names and versions of the packages in the repository, to look up their licenses and known advisories. For a private repository this includes the names of its internal packages. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google's Privacy Policy</a>.</li>
     </ul>
-    <p>Local <code>.zip</code> files are read in your browser and never uploaded. Your browser does not send these services the address of the GitDoco page you are on (no <code>Referer</code> header), and it sends no cookies to them.</p>
+    <p>Local <code>.zip</code> files are read in your browser and never uploaded. Your browser does not send these services the address of the GitDoco page you are on (no <code>Referer</code> header), and it sends no cookies to them. They can see that requests come from the site gitdoco.timedoco.com (the browser's <code>Origin</code> header), but not which page.</p>
 
     <h2>3. What stays in your browser</h2>
     <p>Your GitHub token is kept only in the page's memory: it is never saved, and it is gone when you close or reload the tab.</p>
@@ -87,7 +87,7 @@
     <p>If GitDoco ever adds analytics, advertising or anything else that changes how data is handled, this notice will be updated first, and you will be asked for your consent before any of it runs where the law requires that. The tools will also ask you to accept the updated notice before they next connect to another service.</p>
 
     <h2>9. Questions</h2>
-    <p>Open an issue on <a href="https://github.com/InYourOwnBrowser/GitDoco/issues" target="_blank" rel="noopener noreferrer">GitHub</a>. GitDoco is open source under the MIT License, so you can check all of the above in its code.</p>
+    <p>Email <a href="mailto:hello@timedoco.com">hello@timedoco.com</a> or open an issue on <a href="https://github.com/InYourOwnBrowser/GitDoco/issues" target="_blank" rel="noopener noreferrer">GitHub</a>. GitDoco is part of In Your Own Browser. It is open source under the MIT License, so you can check all of the above in its code.</p>
 </main>
 
 <footer class="site-footer">
@@ -108,6 +108,7 @@
             </a>
         </nav>
     </div>
+    <p class="wrap footer-note">GitDoco is an independent project. It is not affiliated with, endorsed by or sponsored by GitHub, Anthropic, OpenAI, Google or deps.dev. Claude, ChatGPT, Gemini and GitHub are trademarks of their respective owners.</p>
 </footer>
 
 <script type="module" src="js/privacy.js"></script>
