@@ -92,7 +92,7 @@ Deployment is manual, through `.github/workflows/deploy.yml` (modelled on TimeDo
 
 One-time setup:
 
-1. Create the Pages project (Direct Upload, production branch `main`): `npx wrangler pages project create gitdoco --production-branch=main`.
+1. The workflow creates the Pages project `gitdoco` (production branch `main`) on its first deploy, so nothing needs creating by hand. If you create it yourself in the dashboard, check it is a Pages project and not a Worker: a Worker with the same name will not work.
 2. Add the custom domain `gitdoco.timedoco.com` to that project (Pages -> Custom domains).
 3. In the GitHub repository, add the secrets `CLOUDFLARE_API_TOKEN` (permission: Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID`.
 4. Optionally create the `preview` and `production` Environments (Settings -> Environments) and add required reviewers to `production`.
