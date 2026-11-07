@@ -1,4 +1,4 @@
-# GitHub-tools: Implementation Plan
+# GitDoco: Implementation Plan
 
 Roadmap for the Code and Issues explorers and the two proposed new tabs. Each item was checked
 against the code (and, where it relies on outside services, against those services) before it
