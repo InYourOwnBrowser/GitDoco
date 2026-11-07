@@ -244,7 +244,7 @@ test('commentCostHint: 3 issues (per-issue count)', () => {
     // Needs 3 issues, perIssue = 1 + 1 + 1 = 3
     // bulk condition requires perIssue >= 4, so it stays perIssue
     const hint = commentCostHint(selected, selected, new Set(), 'all');
-    assert.deepEqual(hint, { requests: 3, text: 'About 3 GitHub requests.' });
+    assert.deepEqual(hint, { requests: 3, max: 3, text: 'About 3 GitHub requests.' });
 });
 
 test('commentCostHint: 60 recent issues in a 200-issue universe (bulk, small count)', () => {
@@ -263,7 +263,7 @@ test('commentCostHint: 60 recent issues in a 200-issue universe (bulk, small cou
     // bulk = perIssue >= 4 (60 >= 4) && bulkPages (1) <= 60 * 0.3 (18) -> true!
     // n = 1
     const hint = commentCostHint(selected, universe, new Set(), 'all');
-    assert.deepEqual(hint, { requests: 1, text: 'About 1 GitHub request.' });
+    assert.deepEqual(hint, { requests: 1, max: 60, text: 'About 1 GitHub request.' }, 'up to one per issue if the bulk route falls short');
 });
 
 test('defaultExcludedPaths: excludes matched directories but not file names or non-matching paths', () => {

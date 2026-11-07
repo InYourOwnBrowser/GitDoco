@@ -18,7 +18,7 @@ import { switchTab } from './ui-tabs.js';
 import { buildBannerItems, renderBanner } from './ui-banner.js';
 import { TARGETS, detectTarget } from './targets.js';
 import { buildSettingsSummary } from './settings-summary.js';
-import { commentCostHint } from './comment-cost.js';
+import { commentCostHint, quotaNote } from './comment-cost.js';
 import { buildSummaryLines } from './ui-summary.js';
 import { buildTabHref, startFromShortcut } from './nav.js';
 import { externalLink, isGithubUrl } from './links.js';
@@ -298,11 +298,12 @@ let lastRateLimitRemaining = Infinity;
 
 function showPersistentWarning(message, options = {}) {
     if (!dom.persistentWarningBanner) return;
-    const { showTokenBtn = false, showRetryBtn = false, onRetry = null } = options;
+    const { showTokenBtn = false, showRetryBtn = false, onRetry = null, retryLabel = 'Retry' } = options;
     if (dom.warningBannerText) dom.warningBannerText.textContent = message;
     if (dom.warningBannerTokenBtn) dom.warningBannerTokenBtn.style.display = showTokenBtn ? 'inline-block' : 'none';
     if (dom.warningBannerRetryBtn) {
         dom.warningBannerRetryBtn.style.display = showRetryBtn ? 'inline-block' : 'none';
+        dom.warningBannerRetryBtn.textContent = retryLabel;
         dom.warningBannerRetryBtn.onclick = onRetry || null;
     }
     dom.persistentWarningBanner.style.display = 'flex';
@@ -337,11 +338,14 @@ function updateRateLimitUI(meta) {
             dom.quotaRemainingText.innerHTML = `${meta.remaining} requests left, resets <span id="resetVal">${resetTimeStr}</span>`;
         }
         if (dom.rateBadge) {
-            dom.rateBadge.style.display = meta.remaining < 30 ? 'flex' : 'none';
+            // Without a token the hourly allowance is small (60), so always show what is left.
+            dom.rateBadge.style.display = meta.remaining < 30 || !(dom.pat && dom.pat.value.trim()) ? 'flex' : 'none';
         }
         if (meta.remaining < 10) {
             showTokenPanel('');
         }
+        // The comment cost hint compares against what is left.
+        if (allIssues.length) updateSelectionTelemetry();
     }
 }
 
@@ -363,6 +367,7 @@ if (dom.repoUrl) {
 // Check the quota when the user enters a token, not on page open: opening a page must not
 // contact GitHub. Loading a repo updates the quota from GitHub's response headers anyway.
 dom.pat.addEventListener('change', refreshRateLimitBadge);
+dom.pat.addEventListener('input', () => { if (allIssues.length) updateSelectionTelemetry(); });
 
 if (dom.warningBannerDismissBtn) {
     dom.warningBannerDismissBtn.addEventListener('click', hidePersistentWarning);
@@ -737,19 +742,27 @@ function updateSelectionTelemetry() {
     }
 
     if (dom.commentCostHint) {
-        const cachedNumbers = new Set(cachedCommentsByIssue.keys());
         const scope = dom.commentScope ? dom.commentScope.value : 'all';
-        if (IS_DISCUSSIONS) {
-            const needs = scope === 'none' ? [] : selectedList.filter(i => i.commentsCount > 0 && !cachedNumbers.has(i.number));
-            const n = estimateDiscussionCommentCost(needs, Boolean(dom.pat.value.trim()));
-            dom.commentCostHint.textContent = scope === 'none' ? 'No extra requests.'
-                : needs.length === 0 ? 'Comments already loaded.'
-                    : `About ${n} GitHub request${n === 1 ? '' : 's'}.`;
-        } else {
-            const cost = commentCostHint(selectedList, allIssues, cachedNumbers, scope);
-            dom.commentCostHint.textContent = cost.text;
-        }
+        const cost = commentRequestEstimate(selectedList, scope);
+        const note = cost.requests > 0
+            ? quotaNote(cost.requests, { hasToken: Boolean(dom.pat.value.trim()), remaining: lastRateLimitRemaining, max: cost.max || 0, words: W })
+            : { text: cost.text, level: 'ok' };
+        dom.commentCostHint.textContent = note.text;
+        dom.commentCostHint.classList.toggle('cost-warn', note.level === 'warn');
+        dom.commentCostHint.classList.toggle('cost-over', note.level === 'over');
     }
+}
+
+/** GitHub requests needed to fetch the comments of `list` that are not loaded yet. */
+function commentRequestEstimate(list, scope) {
+    if (scope === 'none') return { requests: 0, text: 'No extra requests.' };
+    const cachedNumbers = new Set(cachedCommentsByIssue.keys());
+    if (IS_DISCUSSIONS) {
+        const needs = list.filter(i => i.commentsCount > 0 && !cachedNumbers.has(i.number));
+        if (!needs.length) return { requests: 0, text: 'Comments already loaded.' };
+        return { requests: estimateDiscussionCommentCost(needs, Boolean(dom.pat.value.trim())), text: '' };
+    }
+    return commentCostHint(list, allIssues, cachedNumbers, scope);
 }
 
 function renderIssuesList() {
@@ -1438,7 +1451,7 @@ function showEmptyResult(message) {
     showToast(message.text, 'info');
 }
 
-async function buildSelectedContext(summaryOnly = false) {
+async function buildSelectedContext(summaryOnly = false, spendAnyway = false) {
     if (!currentRepoInfo || allIssues.length === 0) {
         showToast(allIssues.length === 0 && currentRepoInfo ? `There are no ${W.noun} to pack. Load another repository.` : `Load a repository first.`, 'warn');
         return;
@@ -1464,9 +1477,19 @@ async function buildSelectedContext(summaryOnly = false) {
     if (commentScope !== 'none') {
         const missingComments = targetIssues.filter(i => i.commentsCount > 0 && !cachedCommentsByIssue.has(i.number));
         if (missingComments.length > 0) {
-            if (lastRateLimitRemaining !== Infinity && missingComments.length > (lastRateLimitRemaining - 5)) {
-                log(`[WARN] Quota warning: Comment fetch needs ~${missingComments.length} API requests, but only ${lastRateLimitRemaining} remaining.`);
-                showToast(`Fetching comments needs ~${missingComments.length} requests; only ${lastRateLimitRemaining} quota left. Add a GitHub token to raise limit.`, 'warn');
+            // Stop before spending requests that are not there: without a token GitHub allows 60 an
+            // hour, and comments usually cost one request per thread.
+            const needed = commentRequestEstimate(targetIssues, commentScope).requests;
+            const left = Number.isFinite(lastRateLimitRemaining) ? lastRateLimitRemaining : (pat ? Infinity : 60);
+            if (!spendAnyway && needed > left - 2) {
+                log(`[WARN] Fetching comments needs about ${needed} GitHub requests, but only ${left} are left this hour.`);
+                showPersistentWarning(
+                    `Fetching these comments needs about ${needed} GitHub requests, but only ${left} ${left === 1 ? 'is' : 'are'} left this hour${pat ? '' : ' (GitHub allows 60 an hour without a token)'}. Add a token, select fewer ${W.noun}, include fewer comments, or fetch anyway and get the rest later.`,
+                    { showTokenBtn: !pat, showRetryBtn: true, retryLabel: 'Fetch anyway', onRetry: () => { hidePersistentWarning(); buildSelectedContext(summaryOnly, true); } }
+                );
+                // The banner sits just below the sticky header, which is scrolled away once results show.
+                if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
             }
 
             if (buildController) buildController.abort();
